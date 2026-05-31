@@ -1,0 +1,10 @@
+.build/
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+*.dSYM/
+.kiro/
+install.sh
+make-dmg.sh
+.DS_Store
+Resources/AppIcon Exports/

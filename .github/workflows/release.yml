@@ -1,0 +1,146 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test
+        run: swift test
+
+      - name: Build
+        run: swift build -c release --arch arm64
+
+      - name: Create app bundle
+        run: |
+          APP_NAME="TrueTone Manager"
+          BINARY_NAME="TrueToneManager"
+          APP_BUNDLE="$APP_NAME.app"
+          BINARY="$(find .build -name "$BINARY_NAME" -type f | head -1)"
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+
+          rm -rf "$APP_BUNDLE"
+          mkdir -p "$APP_BUNDLE/Contents/MacOS"
+          mkdir -p "$APP_BUNDLE/Contents/Resources"
+          cp "$BINARY" "$APP_BUNDLE/Contents/MacOS/$BINARY_NAME"
+
+          ICON_ASSET="Resources/Assets.xcassets/AppIcon.appicon/AppIcon.icon"
+          ICNS_FILE="Resources/AppIcon.icns"
+          ICON_PLIST_ENTRIES=""
+
+          if [ -d "$ICON_ASSET" ]; then
+              echo "Compiling app icon from asset catalog..."
+              PARTIAL_PLIST="$APP_BUNDLE/Contents/partial.plist"
+              xcrun actool \
+                  Resources/Assets.xcassets \
+                  --compile "$APP_BUNDLE/Contents/Resources" \
+                  --platform macosx \
+                  --minimum-deployment-target 13.0 \
+                  --app-icon AppIcon \
+                  --output-partial-info-plist "$PARTIAL_PLIST" \
+                  --output-format human-readable-text
+              ICON_PLIST_ENTRIES="    <key>CFBundleIconName</key>
+              <string>AppIcon</string>"
+          elif [ -f "$ICNS_FILE" ]; then
+              echo "Using legacy .icns icon..."
+              cp "$ICNS_FILE" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
+              ICON_PLIST_ENTRIES="    <key>CFBundleIconFile</key>
+              <string>AppIcon</string>"
+          else
+              echo "No icon found"
+          fi
+
+          cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleExecutable</key>
+              <string>${BINARY_NAME}</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.truetonemanager.app</string>
+              <key>CFBundleName</key>
+              <string>TrueTone Manager</string>
+              <key>CFBundleDisplayName</key>
+              <string>TrueTone Manager</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${VERSION}</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>LSMinimumSystemVersion</key>
+              <string>13.0</string>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+              <key>LSUIElement</key>
+              <true/>
+              <key>NSPrincipalClass</key>
+              <string>NSApplication</string>
+          ${ICON_PLIST_ENTRIES}
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Ad-hoc code sign
+        run: |
+          codesign --sign - \
+            --force \
+            --options runtime \
+            --entitlements Resources/TrueToneManager.entitlements \
+            "TrueTone Manager.app"
+          codesign --verify --verbose "TrueTone Manager.app"
+
+      - name: Create DMG
+        run: |
+          APP_NAME="TrueTone Manager"
+          BINARY_NAME="TrueToneManager"
+          VOL_NAME="TrueTone Manager"
+          DMG_FINAL="${BINARY_NAME}-${{ github.ref_name }}.dmg"
+          STAGING="dmg_staging"
+
+          rm -rf "${STAGING}"
+          mkdir -p "${STAGING}"
+          cp -R "${APP_NAME}.app" "${STAGING}/"
+          ln -s /Applications "${STAGING}/Applications"
+
+          cat > "${STAGING}/README.txt" << 'TXTEOF'
+          TrueTone Manager — Installation
+
+          1. Drag TrueTone Manager.app onto the Applications folder.
+
+          2. Since this app is not notarized, macOS will block it on first launch.
+             To allow it, open Terminal and run:
+
+               xattr -cr /Applications/TrueTone\ Manager.app
+
+             Then double-click the app to launch it.
+             (Or use System Settings → Privacy & Security → Open Anyway.)
+          TXTEOF
+
+          hdiutil create -srcfolder "${STAGING}" -volname "${VOL_NAME}" \
+            -fs HFS+ -fsargs "-c c=64,a=16,e=16" \
+            -format UDZO -imagekey zlib-level=9 \
+            -ov "${DMG_FINAL}"
+
+          rm -rf "${STAGING}"
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --notes "See [README](https://github.com/${{ github.repository }}/blob/main/README.md) for installation and usage instructions." \
+            "TrueToneManager-${{ github.ref_name }}.dmg"
+        env:
+          GH_TOKEN: ${{ github.token }}
