@@ -55,9 +55,9 @@ Grab the latest `.dmg` from the [Releases](https://github.com/martinrusetski/tru
 
 ## Usage
 
-1. Launch the app — a ☀️ icon appears in your menu bar
-2. Click the icon, then check or uncheck a **Enable TrueTone for (foreground app)**
-3. Switch apps — TrueTone Manager applies your saved preference automatically
+1. Launch the app — a ☀️ icon appears in your menu bar.
+2. Click the icon, then check or uncheck a **Enable TrueTone for (foreground app)** menu option.
+3. Switch apps — TrueTone Manager applies your saved preference automatically.
 
 ## How It Works
 
