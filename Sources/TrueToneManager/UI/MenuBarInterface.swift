@@ -26,16 +26,6 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem.button {
-            if let image = NSImage(
-                systemSymbolName: "sun.max",
-                accessibilityDescription: "TrueTone Manager"
-            ) {
-                image.isTemplate = true
-                button.image = image
-            } else {
-                button.title = "☀"
-            }
-
             button.target = self
             button.action = #selector(handleStatusBarButtonClick)
             button.sendAction(on: [.leftMouseDown, .rightMouseDown])
@@ -49,6 +39,23 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
     func teardown() {
         if let statusItem = statusItem {
             NSStatusBar.system.removeStatusItem(statusItem)
+        }
+    }
+
+    private func updateIcon() {
+        guard let button = statusItem.button else { return }
+
+        let symbolName = manager.currentTrueToneState ? "sun.max.fill" : "sun.max"
+
+        if let image = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: "TrueTone Manager"
+        ) {
+            image.isTemplate = true
+            button.image = image
+            button.title = ""
+        } else {
+            button.title = "☀"
         }
     }
 
@@ -69,6 +76,7 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
     }
 
     func updateMenu() {
+        updateIcon()
         menu.removeAllItems()
 
         let currentAppName = currentAppDisplayName()
