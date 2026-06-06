@@ -51,12 +51,12 @@ Grab the latest `.dmg` from the [Releases](https://github.com/martinrusetski/tru
 > ```bash
 > xattr -cr /Applications/TrueTone\ Manager.app
 > ```
-> Then open normally. Alternatively, right-click the app and select **Open**, or go to **System Settings → Privacy & Security** and click **Open Anyway**.
+> Then open normally. Alternatively, go to **System Settings → Privacy & Security** and click **Open Anyway**.
 
 ## Usage
 
 1. Launch the app — a ☀️ icon appears in your menu bar
-2. Click the icon, then choose a **Disable TrueTone** / **Enable TrueTone** for the current app
+2. Click the icon, then check or uncheck a **Enable TrueTone for <foreground app>**
 3. Switch apps — TrueTone Manager applies your saved preference automatically
 
 ## How It Works
