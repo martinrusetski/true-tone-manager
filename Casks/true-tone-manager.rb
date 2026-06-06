@@ -1,8 +1,8 @@
 cask "true-tone-manager" do
-  version "0.1.0"
-  sha256 "7d39d20f12a494251e8b9a8c49acd918cda3e86cf65c24432c872d9fe5a3359f"
+  version "0.1.1"
+  sha256 "b4ed0a54bbb9d6382dfec43f25cfcdaa00bff584b64407627dfc85dd2806dec7"
 
-  url "https://github.com/martinrusetski/true-tone-manager/releases/download/v0.1.0/TrueToneManager-v0.1.0.dmg"
+  url "https://github.com/martinrusetski/true-tone-manager/releases/download/v0.1.1/TrueToneManager-v0.1.1.dmg"
   name "TrueTone Manager"
   desc "Automatically toggle macOS True Tone per application"
   homepage "https://github.com/martinrusetski/true-tone-manager"
