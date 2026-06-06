@@ -136,6 +136,27 @@ jobs:
 
           rm -rf "${STAGING}"
 
+      - name: Update Homebrew cask
+        run: |
+          DMG="TrueToneManager-${{ github.ref_name }}.dmg"
+          SHA256=$(shasum -a 256 "$DMG" | cut -d ' ' -f 1)
+          VERSION="${{ github.ref_name }}"
+          VERSION_NO_V="${VERSION#v}"
+
+          sed -i '' \
+            -e "s/version \".*\"/version \"$VERSION_NO_V\"/" \
+            -e "s/sha256 \".*\"/sha256 \"$SHA256\"/" \
+            -e "s|url \".*\"|url \"https://github.com/${{ github.repository }}/releases/download/$VERSION/TrueToneManager-$VERSION.dmg\"|" \
+            Casks/true-tone-manager.rb
+
+      - name: Commit updated cask
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/true-tone-manager.rb
+          git commit -m "Update cask for ${{ github.ref_name }}" || true
+          git push origin HEAD:main
+
       - name: Create GitHub Release
         run: |
           gh release create "${{ github.ref_name }}" \
