@@ -1,5 +1,7 @@
 # TrueTone Manager
 
+![True Tone Manager screenshot](Resources/TrueToneManager-Screenshot1.png)
+
 ## Preface from a real, living human
 
 I’m a designer, and I think every designer, photographer, or anyone working with color on an Apple computer knows one crucial thing: you must never forget to turn off True Tone. It subtly shifts the display’s color balance depending on the ambient lighting in the room.
@@ -22,6 +24,8 @@ TrueTone Manager automatically toggles macOS True Tone per application. A lightw
 - **Menu bar icon** — shows current True Tone status, click to toggle for the active app
 - **Persistent preferences** — per-app settings saved to disk and restored on relaunch
 - **Launch at Login** — optional auto-start via `SMAppService`
+- **No Dock icon** — runs silently as a menu bar accessory
+
 - **No Dock icon** — runs silently as a menu bar accessory
 
 ## Requirements
