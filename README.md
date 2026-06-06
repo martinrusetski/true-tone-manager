@@ -26,8 +26,6 @@ TrueTone Manager automatically toggles macOS True Tone per application. A lightw
 - **Launch at Login** — optional auto-start via `SMAppService`
 - **No Dock icon** — runs silently as a menu bar accessory
 
-- **No Dock icon** — runs silently as a menu bar accessory
-
 ## Requirements
 
 - macOS 13 (Ventura) or later
