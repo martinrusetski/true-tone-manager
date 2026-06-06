@@ -159,9 +159,13 @@ jobs:
 
       - name: Create GitHub Release
         run: |
+          NOTES=$(git tag -l --format='%(contents)' "${{ github.ref_name }}" | tail -n +2)
+          if [ -z "$NOTES" ]; then
+            NOTES="See [README](https://github.com/${{ github.repository }}/blob/main/README.md) for installation and usage instructions."
+          fi
           gh release create "${{ github.ref_name }}" \
             --title "${{ github.ref_name }}" \
-            --notes "See [README](https://github.com/${{ github.repository }}/blob/main/README.md) for installation and usage instructions." \
+            --notes "$NOTES" \
             "TrueToneManager-${{ github.ref_name }}.dmg"
         env:
           GH_TOKEN: ${{ github.token }}
