@@ -82,7 +82,6 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
         let currentAppName = currentAppDisplayName()
         let pref = currentAppPreference()
         let isDisabled = pref?.trueToneEnabled == false
-        let checkboxOn = !isDisabled
 
         let appItem = NSMenuItem(
             title: "Current App: \(currentAppName)",
@@ -103,12 +102,11 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         let prefItem = NSMenuItem(
-            title: "Enable TrueTone for \(currentAppName)",
+            title: isDisabled ? "Enable TrueTone for \(currentAppName)" : "Disable TrueTone for \(currentAppName)",
             action: #selector(toggleAppPreferenceAction),
             keyEquivalent: ""
         )
         prefItem.target = self
-        prefItem.state = checkboxOn ? .on : .off
         prefItem.isEnabled = !isPerformingAction
         menu.addItem(prefItem)
 
