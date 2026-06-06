@@ -58,7 +58,9 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
         updateMenu()
 
         button.isHighlighted = true
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.maxY), in: button)
+        let buttonFrame = button.window?.convertToScreen(button.frame) ?? button.frame
+        let menuPoint = NSPoint(x: buttonFrame.minX, y: buttonFrame.minY)
+        menu.popUp(positioning: nil, at: menuPoint, in: nil)
         button.isHighlighted = false
     }
 
