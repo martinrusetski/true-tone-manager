@@ -8,7 +8,7 @@ I’m a designer, and I think every designer, photographer, or anyone working wi
 
 In practice, this mode can completely ruin color grading work. There are plenty of horror stories online about people having to redo entire projects after accidentally working with True Tone enabled.
 
-At the same time, outside of work, it can actually be quite pleasant. It reduces eye strain and makes the display feel warmer and more comfortable. That’s exactly what this app is for: it automatically switches True Tone depending on which application is currently in focus. Open Photoshop, for example - open this app from the menu bar and disable it there. From that point on, whenever Photoshop is in focus, True Tone will turn off automatically, and when you switch away, it will turn back on.
+At the same time, outside of work, it can actually be quite pleasant. It reduces eye strain and makes the display feel warmer and more comfortable. That’s exactly what this app is for: it automatically switches True Tone depending on which application is currently in focus.
 
 I hope this app turns out useful for you. I’ve wanted something like this for a long time but could never find it. Now, in the glorious age of LLMs, there’s no need to  search - I just ended up building it myself. Now I can watch how AI destroys my career with TrueTone off, yay!
 
