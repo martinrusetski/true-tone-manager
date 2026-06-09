@@ -39,8 +39,8 @@ Installs directly to `/Applications` and clears quarantine automatically:
 
 ```bash
 brew tap mrtnby/tap https://github.com/martinrusetski/true-tone-manager
+brew trust mrtnby/tap 
 brew install --cask mrtnby/tap/true-tone-manager
-open '/Applications/TrueTone Manager.app'
 ```
 
 ### DMG (pre-built)
@@ -56,7 +56,7 @@ Grab the latest `.dmg` from the [Releases](https://github.com/martinrusetski/tru
 ## Usage
 
 1. Launch the app — a ☀️ icon appears in your menu bar.
-2. Click the icon, then check or uncheck a **Enable TrueTone for (foreground app)** menu option.
+2. Click the icon, then press **Enable TrueTone for (foreground app)** menu option.
 3. Switch apps — TrueTone Manager applies your saved preference automatically.
 
 ## How It Works
