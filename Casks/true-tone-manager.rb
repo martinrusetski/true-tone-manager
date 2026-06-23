@@ -1,6 +1,6 @@
 cask "true-tone-manager" do
   version "0.2.0"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  sha256 "8cc10254e8c44f29873d03aca535d87c6bda94154aae343aacacadacd28fb374"
 
   url "https://github.com/martinrusetski/true-tone-manager/releases/download/v0.2.0/TrueToneManager-v0.2.0.dmg"
   name "TrueTone Manager"
