@@ -80,8 +80,7 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
         menu.removeAllItems()
 
         let currentAppName = currentAppDisplayName()
-        let pref = currentAppPreference()
-        let isDisabled = pref?.trueToneEnabled == false
+        let available = manager.isTrueToneAvailable
 
         let appItem = NSMenuItem(
             title: "Current App: \(currentAppName)",
@@ -91,24 +90,34 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
         appItem.isEnabled = false
         menu.addItem(appItem)
 
+        let stateText: String
+        if !available {
+            stateText = "Unavailable"
+        } else {
+            stateText = manager.currentTrueToneState ? "On" : "Off"
+        }
         let stateItem = NSMenuItem(
-            title: "TrueTone: \(manager.currentTrueToneState ? "On" : "Off")",
+            title: "TrueTone: \(stateText)",
             action: nil,
             keyEquivalent: ""
         )
         stateItem.isEnabled = false
         menu.addItem(stateItem)
 
+        if !available {
+            let hintItem = NSMenuItem(
+                title: "No True Tone-capable display is active",
+                action: nil,
+                keyEquivalent: ""
+            )
+            hintItem.isEnabled = false
+            menu.addItem(hintItem)
+        }
+
         menu.addItem(.separator())
 
-        let prefItem = NSMenuItem(
-            title: isDisabled ? "Enable TrueTone for \(currentAppName)" : "Disable TrueTone for \(currentAppName)",
-            action: #selector(toggleAppPreferenceAction),
-            keyEquivalent: ""
-        )
-        prefItem.target = self
-        prefItem.isEnabled = !isPerformingAction
-        menu.addItem(prefItem)
+        menu.addItem(makeAppRuleSubmenu(appName: currentAppName))
+        menu.addItem(makeDefaultSubmenu())
 
         menu.addItem(.separator())
 
@@ -161,16 +170,74 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
         return manager.preferenceStore.getPreference(for: current.bundleIdentifier)
     }
 
-    @objc private func toggleAppPreferenceAction() {
-        let currentlyDisabled = currentAppPreference()?.trueToneEnabled == false
+    private func makeAppRuleSubmenu(appName: String) -> NSMenuItem {
+        let pref = currentAppPreference()
+        let submenu = NSMenu()
 
-        performAction {
-            if currentlyDisabled {
-                try self.manager.removePreferenceForCurrentApp()
-            } else {
-                try self.manager.setPreferenceForCurrentApp(enabled: false)
-            }
-        }
+        let defaultText = manager.defaultTrueToneState ? "On" : "Off"
+        let useDefault = NSMenuItem(
+            title: "Use Default (\(defaultText))",
+            action: #selector(useDefaultRuleAction),
+            keyEquivalent: ""
+        )
+        useDefault.target = self
+        useDefault.state = (pref == nil) ? .on : .off
+        submenu.addItem(useDefault)
+
+        let alwaysOn = NSMenuItem(title: "Always On", action: #selector(setRuleOnAction), keyEquivalent: "")
+        alwaysOn.target = self
+        alwaysOn.state = (pref?.trueToneEnabled == true) ? .on : .off
+        submenu.addItem(alwaysOn)
+
+        let alwaysOff = NSMenuItem(title: "Always Off", action: #selector(setRuleOffAction), keyEquivalent: "")
+        alwaysOff.target = self
+        alwaysOff.state = (pref?.trueToneEnabled == false) ? .on : .off
+        submenu.addItem(alwaysOff)
+
+        let item = NSMenuItem(title: "TrueTone for \(appName)", action: nil, keyEquivalent: "")
+        item.submenu = submenu
+        item.isEnabled = !isPerformingAction && manager.currentApplication != nil
+        return item
+    }
+
+    private func makeDefaultSubmenu() -> NSMenuItem {
+        let submenu = NSMenu()
+
+        let on = NSMenuItem(title: "On", action: #selector(setDefaultOnAction), keyEquivalent: "")
+        on.target = self
+        on.state = manager.defaultTrueToneState ? .on : .off
+        submenu.addItem(on)
+
+        let off = NSMenuItem(title: "Off", action: #selector(setDefaultOffAction), keyEquivalent: "")
+        off.target = self
+        off.state = manager.defaultTrueToneState ? .off : .on
+        submenu.addItem(off)
+
+        let item = NSMenuItem(title: "Default (apps without a rule)", action: nil, keyEquivalent: "")
+        item.submenu = submenu
+        return item
+    }
+
+    @objc private func useDefaultRuleAction() {
+        performAction { try self.manager.removePreferenceForCurrentApp() }
+    }
+
+    @objc private func setRuleOnAction() {
+        performAction { try self.manager.setPreferenceForCurrentApp(enabled: true) }
+    }
+
+    @objc private func setRuleOffAction() {
+        performAction { try self.manager.setPreferenceForCurrentApp(enabled: false) }
+    }
+
+    @objc private func setDefaultOnAction() {
+        manager.setDefaultTrueTone(enabled: true)
+        updateMenu()
+    }
+
+    @objc private func setDefaultOffAction() {
+        manager.setDefaultTrueTone(enabled: false)
+        updateMenu()
     }
 
     @objc private func toggleLaunchAtLoginAction() {

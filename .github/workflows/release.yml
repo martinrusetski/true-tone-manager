@@ -75,7 +75,7 @@ jobs:
               <key>CFBundleDisplayName</key>
               <string>TrueTone Manager</string>
               <key>CFBundleVersion</key>
-              <string>1</string>
+              <string>${{ github.run_number }}</string>
               <key>CFBundleShortVersionString</key>
               <string>${VERSION}</string>
               <key>CFBundlePackageType</key>

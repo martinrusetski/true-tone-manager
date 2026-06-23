@@ -1,11 +1,13 @@
 cask "true-tone-manager" do
-  version "0.1.2"
-  sha256 "c20b27c318ea8ac4a50779afdc1a842df021192b0b9e4d83ec03dc24dda0db2c"
+  version "0.2.0"
+  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
-  url "https://github.com/martinrusetski/true-tone-manager/releases/download/v0.1.2/TrueToneManager-v0.1.2.dmg"
+  url "https://github.com/martinrusetski/true-tone-manager/releases/download/v0.2.0/TrueToneManager-v0.2.0.dmg"
   name "TrueTone Manager"
-  desc "Automatically toggle macOS True Tone per application"
+  desc "Automatically toggle True Tone per application"
   homepage "https://github.com/martinrusetski/true-tone-manager"
+
+  depends_on macos: :ventura
 
   app "TrueTone Manager.app"
 
@@ -13,7 +15,5 @@ cask "true-tone-manager" do
     system_command "/usr/bin/xattr", args: ["-cr", "#{appdir}/TrueTone Manager.app"]
   end
 
-  zap trash: [
-    "~/Library/Application Support/TrueToneManager",
-  ]
+  zap trash: "~/Library/Application Support/TrueToneManager"
 end

@@ -7,19 +7,24 @@ final class MockTrueToneSystemClient: TrueToneSystemClient {
     var setStateCalls: [Bool] = []
     var getStatusCalls = 0
     var supported: Bool = true
-
-    func getBlueLightStatus(_ completion: @escaping (Bool) -> Void) {
-        getStatusCalls += 1
-        completion(currentState)
-    }
-
-    func setBlueLightEnabled(_ enabled: Bool) {
-        setStateCalls.append(enabled)
-        currentState = enabled
-    }
+    var available: Bool = true
 
     func isSupported() -> Bool {
         return supported
+    }
+
+    func isAvailable() -> Bool {
+        return available
+    }
+
+    func getEnabled() -> Bool {
+        getStatusCalls += 1
+        return currentState
+    }
+
+    func setEnabled(_ enabled: Bool) {
+        setStateCalls.append(enabled)
+        currentState = enabled
     }
 }
 
@@ -70,5 +75,20 @@ final class TrueToneControllerPropertyTests: XCTestCase {
         XCTAssertThrowsError(try controller.getCurrentState()) { error in
             XCTAssertEqual(error as? TrueToneControllerError, .unsupportedHardware)
         }
+    }
+
+    func testUnavailableDisplayThrowsOnSet() {
+        let client = MockTrueToneSystemClient()
+        client.supported = true
+        client.available = false
+        let controller = TrueToneController(systemClient: client)
+
+        XCTAssertFalse(controller.isAvailable())
+        XCTAssertThrowsError(try controller.setTrueTone(enabled: true)) { error in
+            XCTAssertEqual(error as? TrueToneControllerError, .unavailable)
+        }
+        // Reading the global setting is still allowed (it reflects the system
+        // checkbox, not whether a capable display is currently attached).
+        XCTAssertNoThrow(try controller.getCurrentState())
     }
 }

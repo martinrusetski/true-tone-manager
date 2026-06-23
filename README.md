@@ -20,11 +20,13 @@ TrueTone Manager automatically toggles macOS True Tone per application. A lightw
 
 ## Features
 
-- **Per-app True Tone control** — enable/disable True Tone automatically when switching between apps
-- **Menu bar icon** — shows current True Tone status, click to toggle for the active app
-- **Persistent preferences** — per-app settings saved to disk and restored on relaunch
-- **Launch at Login** — optional auto-start via `SMAppService`
-- **No Dock icon** — runs silently as a menu bar accessory
+- **Per-app rules** — set each app to **Always On**, **Always Off**, or **Use Default**. The rule is applied automatically when that app comes to the foreground.
+- **Configurable default** — the baseline state for apps without a rule. Captured from your current system setting on first launch (no assumptions baked in) and changeable any time from the menu. Leaving an app that had a rule restores the default.
+- **Multi-display aware** — True Tone is a system-wide setting, but only some displays support it. The app detects whether a True Tone-capable display is active and shows **Unavailable** instead of failing — e.g. a MacBook in clamshell mode driving a third-party monitor.
+- **Menu bar icon** — shows the current True Tone status at a glance.
+- **Persistent preferences** — per-app rules saved to disk and restored on relaunch.
+- **Launch at Login** — optional auto-start via `SMAppService`.
+- **No Dock icon** — runs silently as a menu bar accessory.
 
 ## Requirements
 
@@ -56,12 +58,18 @@ Grab the latest `.dmg` from the [Releases](https://github.com/martinrusetski/tru
 ## Usage
 
 1. Launch the app — a ☀️ icon appears in your menu bar.
-2. Click the icon, then press **Enable TrueTone for (foreground app)** menu option.
-3. Switch apps — TrueTone Manager applies your saved preference automatically.
+2. Click the icon. The menu shows the current app and the current True Tone state.
+3. Under **TrueTone for (current app)**, choose **Always On**, **Always Off**, or **Use Default**.
+4. Set the fallback for every other app under **Default (apps without a rule)**.
+5. Switch apps — TrueTone Manager applies the matching rule automatically, and restores the default when you leave an app that had one.
 
 ## How It Works
 
-TrueTone Manager monitors app switches via `NSWorkspace` and controls True Tone through Apple's private `CoreBrightness` framework. Preferences are stored as JSON in:
+TrueTone Manager monitors app switches via `NSWorkspace` and toggles True Tone through Apple's private `CBTrueToneClient` (CoreBrightness) — the same system-wide switch as the System Settings checkbox. True Tone applies to every capable display at once; it is not controlled per-display.
+
+To know whether True Tone can be changed at any given moment, the app checks display capability via `DisplayServices` (True Tone is ambient-light white-point compensation). If no capable display is active — for example a laptop running closed-lid on an external monitor without a True Tone sensor — the menu shows **Unavailable** and rules are deferred until a capable display returns.
+
+Preferences are stored as JSON in:
 
 ```
 ~/Library/Application Support/TrueToneManager/preferences.json

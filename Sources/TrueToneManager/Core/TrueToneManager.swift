@@ -9,6 +9,8 @@ class TrueToneManager {
     var preferenceStore: PreferenceStore
     private let log = OSLog(subsystem: "com.truetonemanager", category: "TrueToneManager")
 
+    private static let defaultStateKey = "DefaultTrueToneState"
+
     private(set) var currentApplication: (bundleIdentifier: String, displayName: String)? {
         didSet {
             DispatchQueue.main.async { [weak self] in
@@ -23,6 +25,21 @@ class TrueToneManager {
             }
         }
     }
+
+    /// Baseline True Tone state applied to any app without an explicit rule.
+    /// Captured from the live system state on first launch (we don't assume a
+    /// hardcoded default), changeable from the menu, and persisted.
+    var defaultTrueToneState: Bool = (UserDefaults.standard.object(forKey: TrueToneManager.defaultStateKey) as? Bool) ?? true {
+        didSet {
+            UserDefaults.standard.set(defaultTrueToneState, forKey: TrueToneManager.defaultStateKey)
+        }
+    }
+
+    /// True Tone can be controlled right now (a capable display is active).
+    var isTrueToneAvailable: Bool {
+        return trueToneController?.isAvailable() ?? false
+    }
+
     var onStateChanged: (() -> Void)?
 
     private init() {
@@ -44,31 +61,63 @@ class TrueToneManager {
             os_log(.error, log: log, "Failed to load preferences: %{public}@", error.localizedDescription)
         }
 
+        // Read the real state *before* the monitor fires its initial app-change,
+        // so the first rule is evaluated against the actual TrueTone state
+        // rather than a stale default.
+        if let controller = trueToneController {
+            do {
+                let state = try controller.getCurrentState()
+                currentTrueToneState = state
+                captureDefaultIfNeeded(state)
+                os_log(.info, log: log, "TrueTone initial state: %{public}@", state ? "On" : "Off")
+            } catch {
+                os_log(.error, log: log, "Failed to get initial state: %{public}@", error.localizedDescription)
+            }
+        }
+
         applicationMonitor.delegate = self
         applicationMonitor.start()
 
-        guard let controller = trueToneController else {
+        if trueToneController == nil {
             os_log(.error, log: log, "TrueTone controller not available")
             completion(TrueToneControllerError.unsupportedHardware)
-            return
+        } else {
+            completion(nil)
         }
+    }
 
-        DispatchQueue.global().async { [weak self] in
-            guard let self = self else { return }
+    /// Capture the live system state as the baseline the very first time we run,
+    /// so we never assume a hardcoded default.
+    private func captureDefaultIfNeeded(_ currentState: Bool) {
+        if UserDefaults.standard.object(forKey: Self.defaultStateKey) == nil {
+            defaultTrueToneState = currentState
+            os_log(.info, log: log, "Captured baseline TrueTone default: %{public}@", currentState ? "On" : "Off")
+        }
+    }
 
-            do {
-                let state = try controller.getCurrentState()
-                DispatchQueue.main.async {
-                    self.currentTrueToneState = state
-                    os_log(.info, log: self.log, "TrueTone initial state: %{public}@", state ? "On" : "Off")
-                    completion(nil)
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    os_log(.error, log: self.log, "Failed to get state: %{public}@", error.localizedDescription)
-                    completion(error)
-                }
+    /// Re-evaluate after a display configuration change (lid open/close, display
+    /// plugged/unplugged). Refreshes the known state and re-applies the current
+    /// app's rule now that availability may have changed.
+    func handleDisplayConfigurationChange() {
+        if let controller = trueToneController, controller.isAvailable(),
+           let state = try? controller.getCurrentState() {
+            currentTrueToneState = state
+            if let current = currentApplication {
+                handleApplicationChange(bundleIdentifier: current.bundleIdentifier)
             }
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.onStateChanged?()
+        }
+    }
+
+    /// Set the baseline default and immediately re-apply the current app's rule
+    /// (so changing the default takes effect for apps without an explicit rule).
+    func setDefaultTrueTone(enabled: Bool) {
+        defaultTrueToneState = enabled
+        os_log(.info, log: log, "Default TrueTone set to %{public}@", enabled ? "On" : "Off")
+        if let current = currentApplication {
+            handleApplicationChange(bundleIdentifier: current.bundleIdentifier)
         }
     }
 
@@ -104,7 +153,12 @@ class TrueToneManager {
         if let preference = preferenceStore.getPreference(for: bundleIdentifier) {
             targetState = preference.trueToneEnabled
         } else {
-            targetState = true
+            targetState = defaultTrueToneState
+        }
+
+        guard isTrueToneAvailable else {
+            os_log(.info, log: log, "TrueTone unavailable, skipping change for %{public}@", bundleIdentifier)
+            return
         }
 
         if targetState == currentTrueToneState {
@@ -149,6 +203,22 @@ class TrueToneManager {
         currentTrueToneState = enabled
     }
 
+    /// Apply the state if TrueTone is controllable right now; otherwise leave it
+    /// for the next display-configuration change. The preference is already
+    /// persisted, so the intent isn't lost.
+    private func applyIfAvailable(_ enabled: Bool, for bundleIdentifier: String) {
+        guard isTrueToneAvailable else {
+            os_log(.info, log: log, "TrueTone unavailable, preference saved but not applied for %{public}@", bundleIdentifier)
+            return
+        }
+        do {
+            try applyTrueToneState(enabled, for: bundleIdentifier)
+        } catch {
+            os_log(.error, log: log, "Failed to apply TrueTone state for %{public}@: %{public}@",
+                   bundleIdentifier, error.localizedDescription)
+        }
+    }
+
     func setPreferenceForCurrentApp(enabled: Bool) throws {
         guard let current = currentApplication else {
             throw ApplicationMonitorError.bundleIdentifierUnavailable
@@ -161,7 +231,7 @@ class TrueToneManager {
         )
 
         try preferenceStore.setPreference(preference)
-        try applyTrueToneState(enabled, for: current.bundleIdentifier)
+        applyIfAvailable(enabled, for: current.bundleIdentifier)
 
         os_log(.info, log: log, "Set preference for %{public}@: TrueTone %{public}@",
                current.bundleIdentifier,
@@ -174,9 +244,10 @@ class TrueToneManager {
         }
 
         try preferenceStore.removePreference(for: current.bundleIdentifier)
-        try applyTrueToneState(true, for: current.bundleIdentifier)
+        applyIfAvailable(defaultTrueToneState, for: current.bundleIdentifier)
 
-        os_log(.info, log: log, "Removed preference for %{public}@, TrueTone re-enabled", current.bundleIdentifier)
+        os_log(.info, log: log, "Removed preference for %{public}@, restored default TrueTone %{public}@",
+               current.bundleIdentifier, defaultTrueToneState ? "On" : "Off")
     }
 }
 

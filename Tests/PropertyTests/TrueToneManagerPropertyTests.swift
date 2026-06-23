@@ -71,8 +71,8 @@ final class TrueToneManagerPropertyTests: XCTestCase {
         }
     }
 
-    func testProperty11_DefaultsToTrueToneOnWithoutPreference() {
-        property("App change without preference enables TrueTone by default") <- forAll { (bundleId: String, initialState: Bool) in
+    func testProperty11_AppliesBaselineDefaultWithoutPreference() {
+        property("App change without a rule applies the configured baseline default") <- forAll { (bundleId: String, initialState: Bool, baseline: Bool) in
             guard !bundleId.isEmpty else { return true }
 
             let client = MockTrueToneSystemClient()
@@ -85,11 +85,60 @@ final class TrueToneManagerPropertyTests: XCTestCase {
                 store: store,
                 monitor: ApplicationMonitor()
             )
+            manager.defaultTrueToneState = baseline
             manager.currentTrueToneState = initialState
             manager.handleApplicationChange(bundleIdentifier: bundleId)
 
-            return manager.currentTrueToneState == true
-                && client.currentState == true
+            return manager.currentTrueToneState == baseline
+                && client.currentState == baseline
         }
+    }
+
+    func testUnavailableDisplayLeavesStateUnchanged() {
+        let bundleId = "com.test.app"
+        let client = MockTrueToneSystemClient()
+        client.supported = true
+        client.available = false
+        client.currentState = true
+        let controller = TrueToneController(systemClient: client)
+        let store = temporaryPreferenceStore()
+
+        try? store.setPreference(
+            AppPreference(bundleIdentifier: bundleId, trueToneEnabled: false, displayName: bundleId)
+        )
+
+        let manager = TrueToneManager(controller: controller, store: store, monitor: ApplicationMonitor())
+        manager.currentTrueToneState = true
+        let callsBefore = client.setStateCalls.count
+
+        manager.handleApplicationChange(bundleIdentifier: bundleId)
+
+        // No capable display active: rule is skipped, state untouched.
+        XCTAssertEqual(client.setStateCalls.count, callsBefore)
+        XCTAssertTrue(manager.currentTrueToneState)
+    }
+
+    func testRemovingRuleRestoresDefault() {
+        let bundleId = "com.test.app"
+        let client = MockTrueToneSystemClient()
+        client.currentState = false
+        let controller = TrueToneController(systemClient: client)
+        let store = temporaryPreferenceStore()
+
+        try? store.setPreference(
+            AppPreference(bundleIdentifier: bundleId, trueToneEnabled: false, displayName: bundleId)
+        )
+
+        let manager = TrueToneManager(controller: controller, store: store, monitor: ApplicationMonitor())
+        manager.defaultTrueToneState = true
+        manager.currentTrueToneState = false
+
+        // Simulate this app being frontmost, then removing its rule.
+        manager.applicationDidChange(bundleIdentifier: bundleId, displayName: bundleId)
+        try? manager.removePreferenceForCurrentApp()
+
+        XCTAssertNil(store.getPreference(for: bundleId))
+        XCTAssertTrue(manager.currentTrueToneState)
+        XCTAssertEqual(client.currentState, true)
     }
 }

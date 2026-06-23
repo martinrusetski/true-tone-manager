@@ -22,6 +22,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.menuBarInterface?.updateMenu()
         }
 
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleScreenParametersChanged),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+
         manager.startAsync { error in
             if let error = error {
                 os_log(.error, log: self.log, "Failed to start: %{public}@", error.localizedDescription)
@@ -29,6 +36,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 os_log(.info, log: self.log, "TrueTone Manager started")
             }
         }
+    }
+
+    @objc private func handleScreenParametersChanged() {
+        os_log(.info, log: log, "Display configuration changed")
+        TrueToneManager.shared.handleDisplayConfigurationChange()
     }
 
     func applicationWillTerminate(_ notification: Notification) {

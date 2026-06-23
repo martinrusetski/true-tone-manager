@@ -1,13 +1,21 @@
+import CoreGraphics
 import Foundation
 
 protocol TrueToneControllerDelegate: AnyObject {
     func trueToneStateDidChange(enabled: Bool)
 }
 
+/// Abstraction over the system True Tone control surface.
+///
+/// `isSupported()` reports whether the hardware can ever do True Tone.
+/// `isAvailable()` reports whether it can be controlled *right now* — this is
+/// false when no True Tone-capable display is active (e.g. a MacBook running in
+/// clamshell mode on a third-party external monitor).
 protocol TrueToneSystemClient {
-    func getBlueLightStatus(_ completion: @escaping (Bool) -> Void)
-    func setBlueLightEnabled(_ enabled: Bool)
     func isSupported() -> Bool
+    func isAvailable() -> Bool
+    func getEnabled() -> Bool
+    func setEnabled(_ enabled: Bool)
 }
 
 class TrueToneController {
@@ -20,10 +28,20 @@ class TrueToneController {
     }
 
     convenience init?() {
-        guard let native = CBBlueLightClientNative() else {
+        guard let native = CBTrueToneClientNative() else {
             return nil
         }
         self.init(systemClient: native)
+    }
+
+    /// True Tone hardware exists on this machine.
+    func isSupported() -> Bool {
+        return systemClient.isSupported()
+    }
+
+    /// True Tone can be read/written right now (a capable display is active).
+    func isAvailable() -> Bool {
+        return systemClient.isSupported() && systemClient.isAvailable()
     }
 
     func getCurrentState() throws -> Bool {
@@ -31,44 +49,27 @@ class TrueToneController {
             throw TrueToneControllerError.unsupportedHardware
         }
 
-        var result: Bool = false
-        var finished = false
-
-        let queue = DispatchQueue(label: "com.truetonemanager.corebrightness")
-        queue.async {
-            self.systemClient.getBlueLightStatus { enabled in
-                result = enabled
-                finished = true
-            }
-        }
-
-        let deadline = Date().addingTimeInterval(3.0)
-        while !finished && Date() < deadline {
-            RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.01))
-            if finished { break }
-        }
-
-        if finished {
-            cachedState = TrueToneState(bool: result)
-            return result
-        }
-
-        return cachedState.boolValue ?? false
+        let state = systemClient.getEnabled()
+        cachedState = TrueToneState(bool: state)
+        return state
     }
 
     func setTrueTone(enabled: Bool) throws {
         guard systemClient.isSupported() else {
             throw TrueToneControllerError.unsupportedHardware
         }
+        guard systemClient.isAvailable() else {
+            throw TrueToneControllerError.unavailable
+        }
 
-        let currentState = try getCurrentState()
-        if currentState == enabled {
+        if systemClient.getEnabled() == enabled {
+            cachedState = TrueToneState(bool: enabled)
             return
         }
 
-        systemClient.setBlueLightEnabled(enabled)
+        systemClient.setEnabled(enabled)
 
-        let actualState = try getCurrentState()
+        let actualState = systemClient.getEnabled()
         guard actualState == enabled else {
             throw TrueToneControllerError.stateVerificationFailed
         }
@@ -79,92 +80,108 @@ class TrueToneController {
             self?.delegate?.trueToneStateDidChange(enabled: enabled)
         }
     }
-
-    func isSupported() -> Bool {
-        return systemClient.isSupported()
-    }
 }
 
-final class CBBlueLightClientNative: TrueToneSystemClient {
-    private let blueLightClient: NSObject?
-    private let adaptationClient: NSObject?
-    private var frameworkHandle: UnsafeMutableRawPointer?
+/// Native implementation backed by the private `CBTrueToneClient` class in
+/// CoreBrightness. `CBTrueToneClient` is the same global switch the
+/// System Settings "True Tone" checkbox drives — it is not per-display.
+///
+/// Current-availability detection uses `DisplayServices`' ambient-light
+/// compensation capability check (True Tone *is* ambient-light white-point
+/// compensation) to tell whether any active display can actually do True Tone.
+final class CBTrueToneClientNative: TrueToneSystemClient {
+    private let client: NSObject
+    private var coreBrightnessHandle: UnsafeMutableRawPointer?
+    private var displayServicesHandle: UnsafeMutableRawPointer?
+
+    private typealias HasAmbientLightCompensation = @convention(c) (UInt32) -> Bool
+    private let hasAmbientLightCompensation: HasAmbientLightCompensation?
 
     init?() {
-        guard let handle = dlopen("/System/Library/PrivateFrameworks/CoreBrightness.framework/CoreBrightness", RTLD_NOW) else {
+        guard let handle = dlopen(
+            "/System/Library/PrivateFrameworks/CoreBrightness.framework/CoreBrightness",
+            RTLD_NOW
+        ) else {
             return nil
         }
-        frameworkHandle = handle
+        coreBrightnessHandle = handle
 
-        if let cls = objc_lookUpClass("CBBlueLightClient") as? NSObject.Type {
-            blueLightClient = cls.init()
-        } else {
-            blueLightClient = nil
+        guard let cls = objc_lookUpClass("CBTrueToneClient") as? NSObject.Type else {
+            return nil
         }
+        client = cls.init()
 
-        if let cls = objc_lookUpClass("CBAdaptationClient") as? NSObject.Type {
-            adaptationClient = cls.init()
+        // DisplayServices is optional; if it is unavailable we fall back to
+        // trusting CBTrueToneClient's own availability flag.
+        if let ds = dlopen(
+            "/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices",
+            RTLD_NOW
+        ) {
+            displayServicesHandle = ds
+            if let sym = dlsym(ds, "DisplayServicesHasAmbientLightCompensation") {
+                hasAmbientLightCompensation = unsafeBitCast(sym, to: HasAmbientLightCompensation.self)
+            } else {
+                hasAmbientLightCompensation = nil
+            }
         } else {
-            adaptationClient = nil
+            hasAmbientLightCompensation = nil
         }
     }
 
     deinit {
-        if let handle = frameworkHandle {
+        if let handle = displayServicesHandle {
+            dlclose(handle)
+        }
+        if let handle = coreBrightnessHandle {
             dlclose(handle)
         }
     }
 
     func isSupported() -> Bool {
-        return adaptationClient != nil || blueLightClient != nil
+        return boolMethod("supported")
     }
 
-    func getBlueLightStatus(_ completion: @escaping (Bool) -> Void) {
-        if let client = adaptationClient {
-            let sel = NSSelectorFromString("getEnabled")
-            if client.responds(to: sel) {
-                let imp = client.method(for: sel)
-                typealias Func = @convention(c) (AnyObject, Selector) -> ObjCBool
-                let enabled = unsafeBitCast(imp, to: Func.self)(client, sel)
-                completion(enabled.boolValue)
-                return
-            }
+    func isAvailable() -> Bool {
+        guard boolMethod("available") else {
+            return false
         }
-
-        if let client = blueLightClient {
-            let selector = NSSelectorFromString("getBlueLightStatus:")
-            if client.responds(to: selector) {
-                let block: @convention(block) (UInt64, ObjCBool, ObjCBool) -> Void = { _, enabled, _ in
-                    completion(enabled.boolValue)
-                }
-                let imp = client.method(for: selector)
-                typealias Func = @convention(c) (AnyObject, Selector, @convention(block) (UInt64, ObjCBool, ObjCBool) -> Void) -> Void
-                unsafeBitCast(imp, to: Func.self)(client, selector, block)
-                return
-            }
+        // If we can enumerate ambient-light capability, require at least one
+        // active display that supports it. Otherwise trust `available`.
+        guard let hasALC = hasAmbientLightCompensation else {
+            return true
         }
-
-        completion(false)
+        return anyActiveDisplay(satisfies: hasALC)
     }
 
-    func setBlueLightEnabled(_ enabled: Bool) {
-        if let client = adaptationClient {
-            let sel = NSSelectorFromString("setEnabled:")
-            if client.responds(to: sel) {
-                let imp = client.method(for: sel)
-                typealias Func = @convention(c) (AnyObject, Selector, ObjCBool) -> Void
-                unsafeBitCast(imp, to: Func.self)(client, sel, ObjCBool(enabled))
-                return
-            }
-        }
+    func getEnabled() -> Bool {
+        return boolMethod("enabled")
+    }
 
-        if let client = blueLightClient {
-            let selector = NSSelectorFromString("setBlueLightEnabled:")
-            if client.responds(to: selector) {
-                let imp = client.method(for: selector)
-                typealias Func = @convention(c) (AnyObject, Selector, ObjCBool) -> Void
-                unsafeBitCast(imp, to: Func.self)(client, selector, ObjCBool(enabled))
-            }
+    func setEnabled(_ enabled: Bool) {
+        let sel = NSSelectorFromString("setEnabled:")
+        guard client.responds(to: sel) else { return }
+        typealias Setter = @convention(c) (AnyObject, Selector, ObjCBool) -> Void
+        let imp = client.method(for: sel)
+        unsafeBitCast(imp, to: Setter.self)(client, sel, ObjCBool(enabled))
+    }
+
+    private func boolMethod(_ name: String) -> Bool {
+        let sel = NSSelectorFromString(name)
+        guard client.responds(to: sel) else { return false }
+        typealias Getter = @convention(c) (AnyObject, Selector) -> ObjCBool
+        let imp = client.method(for: sel)
+        return unsafeBitCast(imp, to: Getter.self)(client, sel).boolValue
+    }
+
+    private func anyActiveDisplay(satisfies predicate: HasAmbientLightCompensation) -> Bool {
+        var displayIDs = [CGDirectDisplayID](repeating: 0, count: 16)
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(16, &displayIDs, &count) == .success else {
+            return true
         }
+        for index in 0..<Int(count) where predicate(displayIDs[index]) {
+            return true
+        }
+        return false
     }
 }

@@ -58,7 +58,9 @@ class PreferenceStore {
     private func handleCorruptedFile() throws {
         let corruptedURL = preferencesURL.appendingPathExtension("corrupted-\(Date().timeIntervalSince1970)")
         try? FileManager.default.moveItem(at: preferencesURL, to: corruptedURL)
-        preferences = [:]
+        queue.sync(flags: .barrier) {
+            preferences = [:]
+        }
     }
 
     func savePreferences() throws {
