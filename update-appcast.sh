@@ -34,8 +34,11 @@ if [ -z "$SIGN_UPDATE" ]; then
 fi
 
 # sign_update prints:  sparkle:edSignature="..." length="..."
+# In CI the key comes from the SPARKLE_PRIVATE_KEY secret, piped to stdin via
+# `--ed-key-file -` (the `-s` flag is deprecated and rejects newer keys).
+# Locally, with no env var set, sign_update reads the key from the Keychain.
 if [ -n "$SPARKLE_PRIVATE_KEY" ]; then
-    SIG_ATTRS="$("$SIGN_UPDATE" "$DMG_PATH" -s "$SPARKLE_PRIVATE_KEY")"
+    SIG_ATTRS="$(printf '%s' "$SPARKLE_PRIVATE_KEY" | "$SIGN_UPDATE" "$DMG_PATH" --ed-key-file -)"
 else
     SIG_ATTRS="$("$SIGN_UPDATE" "$DMG_PATH")"
 fi
