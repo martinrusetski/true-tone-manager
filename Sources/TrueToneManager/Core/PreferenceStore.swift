@@ -1,7 +1,12 @@
 import Foundation
+import os.log
 
 protocol PreferenceStoreDelegate: AnyObject {
     func preferencesDidChange()
+}
+
+extension Notification.Name {
+    static let preferencesDidChange = Notification.Name("com.truetonemanager.preferencesDidChange")
 }
 
 class PreferenceStore {
@@ -10,6 +15,7 @@ class PreferenceStore {
     private let queue = DispatchQueue(label: "com.truetonemanager.preferences", attributes: .concurrent)
     private var preferences: [String: AppPreference] = [:]
     private let preferencesURL: URL
+    private let log = OSLog(subsystem: "com.truetonemanager", category: "PreferenceStore")
 
     init(preferencesURL: URL? = nil) {
         self.preferencesURL = preferencesURL ?? Self.defaultPreferencesURL()
@@ -48,11 +54,40 @@ class PreferenceStore {
             return
         }
 
+        // Drop entries with garbage identifiers (written by an old bug, before
+        // Wine detection existed). The next save purges them from disk.
+        let valid = collection.preferences.filter { Self.isValidBundleIdentifier($0.bundleIdentifier) }
+        let droppedCount = collection.preferences.count - valid.count
+        if droppedCount > 0 {
+            os_log(.error, log: log, "Dropped %d preference(s) with invalid bundle identifiers", droppedCount)
+        }
+
         queue.sync(flags: .barrier) {
-            for pref in collection.preferences {
+            for pref in valid {
                 preferences[pref.bundleIdentifier] = pref
             }
         }
+    }
+
+    /// Permissive sanity check meant to reject binary garbage, not to police
+    /// naming: non-empty, no control/illegal characters, and either a plausible
+    /// reverse-DNS-ish identifier or a "wine:" key followed by a printable path.
+    private static func isValidBundleIdentifier(_ identifier: String) -> Bool {
+        guard !identifier.isEmpty else {
+            return false
+        }
+
+        let forbidden = CharacterSet.controlCharacters.union(.illegalCharacters)
+        guard identifier.rangeOfCharacter(from: forbidden) == nil else {
+            return false
+        }
+
+        if identifier.hasPrefix("wine:") {
+            return identifier.count > "wine:".count
+        }
+
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: ".-_"))
+        return identifier.unicodeScalars.allSatisfy { allowed.contains($0) }
     }
 
     private func handleCorruptedFile() throws {
@@ -110,7 +145,7 @@ class PreferenceStore {
     }
 
     func setPreference(_ preference: AppPreference) throws {
-        guard !preference.bundleIdentifier.isEmpty else {
+        guard Self.isValidBundleIdentifier(preference.bundleIdentifier) else {
             throw PreferenceStoreError.invalidBundleIdentifier
         }
 
@@ -129,6 +164,7 @@ class PreferenceStore {
 
         DispatchQueue.main.async { [weak self] in
             self?.delegate?.preferencesDidChange()
+            NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
         }
     }
 
@@ -156,6 +192,7 @@ class PreferenceStore {
 
         DispatchQueue.main.async { [weak self] in
             self?.delegate?.preferencesDidChange()
+            NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
         }
     }
 }

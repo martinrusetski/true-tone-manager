@@ -224,18 +224,11 @@ class TrueToneManager {
             throw ApplicationMonitorError.bundleIdentifierUnavailable
         }
 
-        let preference = AppPreference(
+        try setPreference(
             bundleIdentifier: current.bundleIdentifier,
-            trueToneEnabled: enabled,
-            displayName: current.displayName
+            displayName: current.displayName,
+            enabled: enabled
         )
-
-        try preferenceStore.setPreference(preference)
-        applyIfAvailable(enabled, for: current.bundleIdentifier)
-
-        os_log(.info, log: log, "Set preference for %{public}@: TrueTone %{public}@",
-               current.bundleIdentifier,
-               enabled ? "On" : "Off")
     }
 
     func removePreferenceForCurrentApp() throws {
@@ -243,11 +236,40 @@ class TrueToneManager {
             throw ApplicationMonitorError.bundleIdentifierUnavailable
         }
 
-        try preferenceStore.removePreference(for: current.bundleIdentifier)
-        applyIfAvailable(defaultTrueToneState, for: current.bundleIdentifier)
+        try removePreference(bundleIdentifier: current.bundleIdentifier)
+    }
+
+    /// Set (or replace) the rule for an arbitrary bundle identifier, e.g. from the
+    /// Settings window's Apps pane. If it's the frontmost app, applies immediately.
+    func setPreference(bundleIdentifier: String, displayName: String, enabled: Bool) throws {
+        let preference = AppPreference(
+            bundleIdentifier: bundleIdentifier,
+            trueToneEnabled: enabled,
+            displayName: displayName
+        )
+
+        try preferenceStore.setPreference(preference)
+
+        if bundleIdentifier == currentApplication?.bundleIdentifier {
+            applyIfAvailable(enabled, for: bundleIdentifier)
+        }
+
+        os_log(.info, log: log, "Set preference for %{public}@: TrueTone %{public}@",
+               bundleIdentifier,
+               enabled ? "On" : "Off")
+    }
+
+    /// Remove the rule for an arbitrary bundle identifier, e.g. from the Settings
+    /// window's Apps pane. If it's the frontmost app, re-applies the default.
+    func removePreference(bundleIdentifier: String) throws {
+        try preferenceStore.removePreference(for: bundleIdentifier)
+
+        if bundleIdentifier == currentApplication?.bundleIdentifier {
+            applyIfAvailable(defaultTrueToneState, for: bundleIdentifier)
+        }
 
         os_log(.info, log: log, "Removed preference for %{public}@, restored default TrueTone %{public}@",
-               current.bundleIdentifier, defaultTrueToneState ? "On" : "Off")
+               bundleIdentifier, defaultTrueToneState ? "On" : "Off")
     }
 }
 

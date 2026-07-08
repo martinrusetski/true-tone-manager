@@ -16,6 +16,7 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
     private let log = OSLog(subsystem: "com.truetonemanager", category: "MenuBarInterface")
     private var isPerformingAction = false
     private lazy var aboutWindowController = AboutWindowController()
+    private lazy var settingsWindowController = SettingsWindowController()
 
     init(manager: TrueToneManager) {
         self.manager = manager
@@ -32,14 +33,28 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
         }
 
         menu.delegate = self
+
+        // Keep the menu in sync with edits made from the Settings window.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handlePreferencesDidChange),
+            name: .preferencesDidChange,
+            object: nil
+        )
+
         updateMenu()
         os_log(.info, log: log, "Menu bar interface ready")
     }
 
     func teardown() {
+        NotificationCenter.default.removeObserver(self, name: .preferencesDidChange, object: nil)
         if let statusItem = statusItem {
             NSStatusBar.system.removeStatusItem(statusItem)
         }
+    }
+
+    @objc private func handlePreferencesDidChange() {
+        updateMenu()
     }
 
     private func updateIcon() {
@@ -121,14 +136,13 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        let launchItem = NSMenuItem(
-            title: "Launch at Login",
-            action: #selector(toggleLaunchAtLoginAction),
-            keyEquivalent: ""
+        let settingsItem = NSMenuItem(
+            title: "Settings…",
+            action: #selector(showSettingsAction),
+            keyEquivalent: ","
         )
-        launchItem.target = self
-        launchItem.state = LaunchAtLoginManager.isEnabled() ? .on : .off
-        menu.addItem(launchItem)
+        settingsItem.target = self
+        menu.addItem(settingsItem)
 
         menu.addItem(.separator())
 
@@ -240,23 +254,8 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
         updateMenu()
     }
 
-    @objc private func toggleLaunchAtLoginAction() {
-        let currentlyEnabled = LaunchAtLoginManager.isEnabled()
-
-        do {
-            if currentlyEnabled {
-                try LaunchAtLoginManager.disable()
-            } else {
-                try LaunchAtLoginManager.enable()
-            }
-            updateMenu()
-        } catch {
-            showNotification(
-                title: "Launch at Login Error",
-                message: error.localizedDescription,
-                type: .error
-            )
-        }
+    @objc private func showSettingsAction() {
+        settingsWindowController.show()
     }
 
     @objc private func quitAction() {

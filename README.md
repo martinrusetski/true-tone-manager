@@ -2,31 +2,22 @@
 
 ![True Tone Manager screenshot](Resources/TrueToneManager-Screenshot1.png)
 
-## Preface from a real, living human
+## Description
 
 I’m a designer, and I think every designer, photographer, or anyone working with color on an Apple computer knows one crucial thing: you must never forget to turn off True Tone. It subtly shifts the display’s color balance depending on the ambient lighting in the room.
 
 In practice, this mode can completely ruin color grading work. There are plenty of horror stories online about people having to redo entire projects after accidentally working with True Tone enabled.
 
-At the same time, outside of work, it can actually be quite pleasant. It reduces eye strain and makes the display feel warmer and more comfortable. That’s exactly what this app is for: it automatically switches True Tone depending on which application is currently in focus.
-
-I hope this app turns out useful for you. I’ve wanted something like this for a long time but could never find it. Now, in the glorious age of LLMs, there’s no need to  search - I just ended up building it myself. Now I can watch how AI destroys my career with TrueTone off, yay!
-
-Alright, you bag of bolts, go ahead and write the README:
-
-## Description
-
-TrueTone Manager automatically toggles macOS True Tone per application. A lightweight menu bar app that remembers your True Tone preference for each app and applies it on switch.
+At the same time, outside of work, it can actually be quite pleasant. It reduces eye strain and makes the display feel warmer and more comfortable. That’s exactly what this app is for: it remembers your True Tone preference for each app and applies it on switch. It's lightweight, simple, and does exactly what it needs to do. No more frustration, no more lost work.
 
 ## Features
 
 - **Per-app rules** — set each app to **Always On**, **Always Off**, or **Use Default**. The rule is applied automatically when that app comes to the foreground.
 - **Configurable default** — the baseline state for apps without a rule. Captured from your current system setting on first launch (no assumptions baked in) and changeable any time from the menu. Leaving an app that had a rule restores the default.
 - **Multi-display aware** — True Tone is a system-wide setting, but only some displays support it. The app detects whether a True Tone-capable display is active and shows **Unavailable** instead of failing — e.g. a MacBook in clamshell mode driving a third-party monitor.
+- **Settings window** — press ⌘, on the menu bar icon to manage everything in one place: every per-app rule in a single list with native switches, the default state, and launch at login. Rules can be added for apps that aren't currently running via the **+** button.
 - **Menu bar icon** — shows the current True Tone status at a glance.
 - **Persistent preferences** — per-app rules saved to disk and restored on relaunch.
-- **Launch at Login** — optional auto-start via `SMAppService`.
-- **No Dock icon** — runs silently as a menu bar accessory.
 
 ## Requirements
 
@@ -62,6 +53,7 @@ Grab the latest `.dmg` from the [Releases](https://github.com/martinrusetski/tru
 3. Under **TrueTone for (current app)**, choose **Always On**, **Always Off**, or **Use Default**.
 4. Set the fallback for every other app under **Default (apps without a rule)**.
 5. Switch apps — TrueTone Manager applies the matching rule automatically, and restores the default when you leave an app that had one.
+6. Open **Settings…** (⌘,) from the menu to review all rules at once, add rules for apps that aren't currently running, remove old ones, and enable launch at login.
 
 ## How It Works
 

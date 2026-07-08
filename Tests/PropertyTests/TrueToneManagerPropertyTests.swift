@@ -14,9 +14,10 @@ final class TrueToneManagerPropertyTests: XCTestCase {
     }
 
     func testProperty9_AutomaticAdjustment() {
-        property("App change with existing preference applies the specified TrueTone state") <- forAll { (bundleId: String, preferredState: Bool) in
-            guard !bundleId.isEmpty else { return true }
-
+        property("App change with existing preference applies the specified TrueTone state") <- forAll(
+            BundleIdentifierGenerator.arbitrary(),
+            Bool.arbitrary
+        ) { (bundleId: String, preferredState: Bool) in
             let client = MockTrueToneSystemClient()
             client.currentState = !preferredState
             let controller = TrueToneController(systemClient: client)
@@ -43,9 +44,10 @@ final class TrueToneManagerPropertyTests: XCTestCase {
     }
 
     func testProperty10_NoChangeOptimization() {
-        property("App change where preference matches current state does not request state change") <- forAll { (bundleId: String, state: Bool) in
-            guard !bundleId.isEmpty else { return true }
-
+        property("App change where preference matches current state does not request state change") <- forAll(
+            BundleIdentifierGenerator.arbitrary(),
+            Bool.arbitrary
+        ) { (bundleId: String, state: Bool) in
             let client = MockTrueToneSystemClient()
             client.currentState = state
             let controller = TrueToneController(systemClient: client)

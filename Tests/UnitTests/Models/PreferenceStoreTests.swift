@@ -52,6 +52,60 @@ final class PreferenceStoreTests: XCTestCase {
         XCTAssertTrue(all.isEmpty)
     }
 
+    func testLoadDropsGarbageEntriesAndKeepsValidOnes() throws {
+        let garbage = AppPreference(
+            bundleIdentifier: "\u{01}\u{02}\u{7F}binary\u{00}junk",
+            trueToneEnabled: true,
+            displayName: "\u{03}\u{04}garbage"
+        )
+        let valid = AppPreference(
+            bundleIdentifier: "com.example.valid",
+            trueToneEnabled: false,
+            displayName: "Valid App"
+        )
+        let wine = AppPreference(
+            bundleIdentifier: "wine:Z:\\Games\\Example.exe",
+            trueToneEnabled: true,
+            displayName: "Example Game"
+        )
+
+        let collection = PreferenceCollection(preferences: [garbage, valid, wine])
+        let data = try JSONEncoder().encode(collection)
+        try data.write(to: temporaryDirectory.appendingPathComponent("preferences.json"))
+
+        try store.loadPreferences()
+
+        let all = store.getAllPreferences()
+        XCTAssertEqual(all.count, 2)
+        XCTAssertNil(store.getPreference(for: garbage.bundleIdentifier))
+        XCTAssertEqual(store.getPreference(for: "com.example.valid")?.trueToneEnabled, false)
+        XCTAssertEqual(store.getPreference(for: "wine:Z:\\Games\\Example.exe")?.trueToneEnabled, true)
+    }
+
+    func testSetPreferenceWithControlCharacterIdentifierThrows() {
+        let pref = AppPreference(
+            bundleIdentifier: "com.example\u{01}.bad",
+            trueToneEnabled: true,
+            displayName: "Bad App"
+        )
+
+        XCTAssertThrowsError(try store.setPreference(pref)) { error in
+            XCTAssertEqual(error as? PreferenceStoreError, .invalidBundleIdentifier)
+        }
+        XCTAssertNil(store.getPreference(for: pref.bundleIdentifier))
+    }
+
+    func testSetPreferenceWithWineIdentifierSucceeds() {
+        let pref = AppPreference(
+            bundleIdentifier: "wine:Z:\\Users\\martin\\Games\\ZenlessZoneZero.exe",
+            trueToneEnabled: false,
+            displayName: "Zenless Zone Zero"
+        )
+
+        XCTAssertNoThrow(try store.setPreference(pref))
+        XCTAssertEqual(store.getPreference(for: pref.bundleIdentifier)?.trueToneEnabled, false)
+    }
+
     func testDuplicateBundleIdentifierReplaces() {
         let pref1 = AppPreference(
             bundleIdentifier: "com.test.duplicate",

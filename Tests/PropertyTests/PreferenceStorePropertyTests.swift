@@ -13,9 +13,11 @@ final class PreferenceStorePropertyTests: XCTestCase {
     }
 
     func testProperty6_PreferenceUpsert() {
-        property("Adding valid AppPreference persists it and subsequent queries return matching data") <- forAll { (bundleId: String, enabled: Bool, name: String) in
-            guard !bundleId.isEmpty else { return true }
-
+        property("Adding valid AppPreference persists it and subsequent queries return matching data") <- forAll(
+            BundleIdentifierGenerator.arbitrary(),
+            Bool.arbitrary,
+            String.arbitrary
+        ) { (bundleId: String, enabled: Bool, name: String) in
             let store = PreferenceStore(preferencesURL: self.temporaryPreferencesURL())
             let pref = AppPreference(
                 bundleIdentifier: bundleId,
@@ -37,8 +39,12 @@ final class PreferenceStorePropertyTests: XCTestCase {
     }
 
     func testProperty6b_PreferenceUpsertReplaces() {
-        property("Adding a preference with existing bundle identifier replaces the old preference") <- forAll { (bundleId: String, name1: String, name2: String) in
-            guard !bundleId.isEmpty, name1 != name2 else { return true }
+        property("Adding a preference with existing bundle identifier replaces the old preference") <- forAll(
+            BundleIdentifierGenerator.arbitrary(),
+            String.arbitrary,
+            String.arbitrary
+        ) { (bundleId: String, name1: String, name2: String) in
+            guard name1 != name2 else { return true }
 
             let store = PreferenceStore(preferencesURL: self.temporaryPreferencesURL())
             let pref1 = AppPreference(
@@ -66,8 +72,12 @@ final class PreferenceStorePropertyTests: XCTestCase {
     }
 
     func testProperty7_PreferenceDeletion() {
-        property("Removing an existing preference results in subsequent queries returning nil") <- forAll { (bundleId: String, enabled: Bool, name: String) in
-            guard !bundleId.isEmpty, !name.isEmpty else { return true }
+        property("Removing an existing preference results in subsequent queries returning nil") <- forAll(
+            BundleIdentifierGenerator.arbitrary(),
+            Bool.arbitrary,
+            String.arbitrary
+        ) { (bundleId: String, enabled: Bool, name: String) in
+            guard !name.isEmpty else { return true }
 
             let store = PreferenceStore(preferencesURL: self.temporaryPreferencesURL())
             let pref = AppPreference(
@@ -88,9 +98,10 @@ final class PreferenceStorePropertyTests: XCTestCase {
     }
 
     func testProperty25_PersistenceRoundTrip() {
-        property("Save then load preserves bundle identifiers and TrueTone states") <- forAll { (bundleId: String, enabled: Bool) in
-            guard !bundleId.isEmpty else { return true }
-
+        property("Save then load preserves bundle identifiers and TrueTone states") <- forAll(
+            BundleIdentifierGenerator.arbitrary(),
+            Bool.arbitrary
+        ) { (bundleId: String, enabled: Bool) in
             let preferencesURL = self.temporaryPreferencesURL()
             let store = PreferenceStore(preferencesURL: preferencesURL)
             let pref = AppPreference(
