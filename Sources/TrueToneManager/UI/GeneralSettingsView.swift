@@ -5,6 +5,8 @@ struct GeneralSettingsView: View {
     @State private var launchAtLoginError: String?
     @State private var defaultTrueToneOn = TrueToneManager.shared.defaultTrueToneState
     @State private var isTrueToneAvailable = TrueToneManager.shared.isTrueToneAvailable
+    @State private var updatesAvailable = UpdaterManager.shared.isAvailable
+    @State private var autoCheckUpdates = UpdaterManager.shared.automaticallyChecksForUpdates
 
     var body: some View {
         Form {
@@ -41,6 +43,20 @@ struct GeneralSettingsView: View {
                         .foregroundColor(.secondary)
                 }
             }
+
+            if updatesAvailable {
+                Section {
+                    Toggle("Automatically check for updates", isOn: $autoCheckUpdates)
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .onChange(of: autoCheckUpdates) { newValue in
+                            UpdaterManager.shared.automaticallyChecksForUpdates = newValue
+                        }
+                    Button("Check for Updates…") {
+                        UpdaterManager.shared.checkForUpdates()
+                    }
+                }
+            }
         }
         .formStyle(.grouped)
         .scrollDisabled(true)
@@ -48,6 +64,11 @@ struct GeneralSettingsView: View {
             launchAtLogin = LaunchAtLoginManager.isEnabled()
             defaultTrueToneOn = TrueToneManager.shared.defaultTrueToneState
             isTrueToneAvailable = TrueToneManager.shared.isTrueToneAvailable
+            updatesAvailable = UpdaterManager.shared.isAvailable
+            autoCheckUpdates = UpdaterManager.shared.automaticallyChecksForUpdates
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UpdaterManager.didChangeSettings)) { _ in
+            autoCheckUpdates = UpdaterManager.shared.automaticallyChecksForUpdates
         }
     }
 

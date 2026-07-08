@@ -146,6 +146,16 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
+        if UpdaterManager.shared.isAvailable {
+            let updatesItem = NSMenuItem(
+                title: "Check for Updates…",
+                action: #selector(checkForUpdatesAction),
+                keyEquivalent: ""
+            )
+            updatesItem.target = self
+            menu.addItem(updatesItem)
+        }
+
         let aboutItem = NSMenuItem(
             title: "About TrueTone Manager",
             action: #selector(showAboutAction),
@@ -266,6 +276,10 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
 
     @objc private func showAboutAction() {
         aboutWindowController.show()
+    }
+
+    @objc private func checkForUpdatesAction() {
+        UpdaterManager.shared.checkForUpdates()
     }
 
     private func performAction(_ action: @escaping () throws -> Void) {

@@ -22,6 +22,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.menuBarInterface?.updateMenu()
         }
 
+        // Starts Sparkle and, on first launch, asks about automatic updates.
+        UpdaterManager.shared.start()
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleScreenParametersChanged),

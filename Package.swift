@@ -9,15 +9,22 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/typelift/SwiftCheck.git", from: "0.12.0"),
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
     ],
     targets: [
         .executableTarget(
             name: "TrueToneManager",
+            dependencies: [
+                .product(name: "Sparkle", package: "Sparkle"),
+            ],
             path: "Sources/TrueToneManager",
             linkerSettings: [
                 .unsafeFlags([
                     "-F/System/Library/PrivateFrameworks",
-                    "-framework", "CoreBrightness"
+                    "-framework", "CoreBrightness",
+                    // Locate the embedded Sparkle.framework at runtime once the
+                    // executable lives inside the .app bundle we assemble by hand.
+                    "-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"
                 ])
             ]
         ),

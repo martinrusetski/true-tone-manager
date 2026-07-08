@@ -30,6 +30,8 @@ jobs:
           BINARY="$(find .build -name "$BINARY_NAME" -type f | head -1)"
           VERSION="${{ github.ref_name }}"
           VERSION="${VERSION#v}"
+          SPARKLE_PUB_KEY="$(tr -d '[:space:]' < Resources/sparkle_public_key.txt)"
+          SPARKLE_FEED_URL="https://raw.githubusercontent.com/${{ github.repository }}/main/appcast.xml"
 
           rm -rf "$APP_BUNDLE"
           mkdir -p "$APP_BUNDLE/Contents/MacOS"
@@ -90,10 +92,17 @@ jobs:
               <true/>
               <key>NSPrincipalClass</key>
               <string>NSApplication</string>
+              <key>SUFeedURL</key>
+              <string>${SPARKLE_FEED_URL}</string>
+              <key>SUPublicEDKey</key>
+              <string>${SPARKLE_PUB_KEY}</string>
           ${ICON_PLIST_ENTRIES}
           </dict>
           </plist>
           PLIST
+
+      - name: Embed Sparkle framework
+        run: ./embed-sparkle.sh "TrueTone Manager.app"
 
       - name: Ad-hoc code sign
         run: |
@@ -129,6 +138,9 @@ jobs:
 
              Then double-click the app to launch it.
              (Or use System Settings → Privacy & Security → Open Anyway.)
+
+          3. Future updates install automatically from within the app —
+             you won't need to re-download this installer or repeat step 2.
           TXTEOF
 
           hdiutil create -srcfolder "${STAGING}" -volname "${VOL_NAME}" \
@@ -137,6 +149,16 @@ jobs:
             -ov "${DMG_FINAL}"
 
           rm -rf "${STAGING}"
+
+      - name: Sign update and update appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          DMG="TrueToneManager-${TAG}.dmg"
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${DMG}"
+          ./update-appcast.sh "$VERSION" "${{ github.run_number }}" "$DMG" "$DOWNLOAD_URL"
 
       - name: Update Homebrew cask
         run: |
@@ -155,8 +177,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Casks/true-tone-manager.rb
-          git commit -m "Update cask for ${{ github.ref_name }}" || true
+          git add Casks/true-tone-manager.rb appcast.xml
+          git commit -m "Update cask and appcast for ${{ github.ref_name }}" || true
           git push origin HEAD:main
 
       - name: Create GitHub Release
