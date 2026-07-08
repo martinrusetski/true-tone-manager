@@ -1,0 +1,50 @@
+{
+  "fill" : "automatic",
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "blend-mode" : "hard-light",
+          "fill" : {
+            "solid" : "display-p3:0.63164,0.55196,0.00000,1.00000"
+          },
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "Group 1597880437 2.svg",
+          "name" : "Group 1597880437 2",
+          "position" : {
+            "scale" : 1.9999999999999998,
+            "translation-in-points" : [
+              0.19899999999995543,
+              0.16899999999998272
+            ]
+          }
+        },
+        {
+          "blend-mode" : "normal",
+          "glass" : false,
+          "image-name" : "Group 1597880442.svg",
+          "name" : "Group 1597880442",
+          "position" : {
+            "scale" : 2.05,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : "shared"
+  }
+}

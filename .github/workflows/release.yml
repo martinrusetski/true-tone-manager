@@ -7,7 +7,8 @@ on:
 
 jobs:
   build-and-release:
-    runs-on: macos-14
+    # macos-26 ships Xcode 26, whose actool is needed to compile the .icon app icon
+    runs-on: macos-26
     permissions:
       contents: write
 
@@ -35,22 +36,23 @@ jobs:
           mkdir -p "$APP_BUNDLE/Contents/Resources"
           cp "$BINARY" "$APP_BUNDLE/Contents/MacOS/$BINARY_NAME"
 
-          ICON_ASSET="Resources/Assets.xcassets/AppIcon.appicon/AppIcon.icon"
+          ICON_FILE="Resources/AppIcon.icon"
           ICNS_FILE="Resources/AppIcon.icns"
           ICON_PLIST_ENTRIES=""
 
-          if [ -d "$ICON_ASSET" ]; then
-              echo "Compiling app icon from asset catalog..."
-              PARTIAL_PLIST="$APP_BUNDLE/Contents/partial.plist"
-              xcrun actool \
-                  Resources/Assets.xcassets \
+          if [ -d "$ICON_FILE" ]; then
+              echo "Compiling app icon (.icon -> Assets.car + fallback .icns)..."
+              xcrun actool "$ICON_FILE" \
                   --compile "$APP_BUNDLE/Contents/Resources" \
                   --platform macosx \
                   --minimum-deployment-target 13.0 \
                   --app-icon AppIcon \
-                  --output-partial-info-plist "$PARTIAL_PLIST" \
+                  --include-all-app-icons \
+                  --output-partial-info-plist /dev/null \
                   --output-format human-readable-text
-              ICON_PLIST_ENTRIES="    <key>CFBundleIconName</key>
+              ICON_PLIST_ENTRIES="    <key>CFBundleIconFile</key>
+              <string>AppIcon</string>
+              <key>CFBundleIconName</key>
               <string>AppIcon</string>"
           elif [ -f "$ICNS_FILE" ]; then
               echo "Using legacy .icns icon..."
