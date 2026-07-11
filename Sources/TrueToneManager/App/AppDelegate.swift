@@ -7,7 +7,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         os_log(.info, log: log, "App launching")
-        NotificationManager.shared.requestAuthorization()
 
         if #available(macOS 13.0, *), LaunchAtLoginManager.isDesiredEnabled() {
             try? LaunchAtLoginManager.enable()

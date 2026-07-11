@@ -7,6 +7,7 @@ struct GeneralSettingsView: View {
     @State private var isTrueToneAvailable = TrueToneManager.shared.isTrueToneAvailable
     @State private var updatesAvailable = UpdaterManager.shared.isAvailable
     @State private var autoCheckUpdates = UpdaterManager.shared.automaticallyChecksForUpdates
+    @State private var notifyOnChange = NotificationManager.shared.stateChangeNotificationsEnabled
 
     var body: some View {
         Form {
@@ -33,6 +34,19 @@ struct GeneralSettingsView: View {
                     }
             } footer: {
                 Text("Applied to apps without a specific rule.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+            }
+
+            Section {
+                Toggle("Notify when True Tone changes", isOn: $notifyOnChange)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .onChange(of: notifyOnChange) { newValue in
+                        NotificationManager.shared.stateChangeNotificationsEnabled = newValue
+                    }
+            } footer: {
+                Text("Shows a notification each time True Tone turns on or off.")
                     .font(.footnote)
                     .foregroundColor(.secondary)
             }
@@ -66,6 +80,7 @@ struct GeneralSettingsView: View {
             isTrueToneAvailable = TrueToneManager.shared.isTrueToneAvailable
             updatesAvailable = UpdaterManager.shared.isAvailable
             autoCheckUpdates = UpdaterManager.shared.automaticallyChecksForUpdates
+            notifyOnChange = NotificationManager.shared.stateChangeNotificationsEnabled
         }
         .onReceive(NotificationCenter.default.publisher(for: UpdaterManager.didChangeSettings)) { _ in
             autoCheckUpdates = UpdaterManager.shared.automaticallyChecksForUpdates

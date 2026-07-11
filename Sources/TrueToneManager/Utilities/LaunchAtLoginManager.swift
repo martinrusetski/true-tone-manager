@@ -23,7 +23,12 @@ enum LaunchAtLoginManager {
 
     static func enable() throws {
         if #available(macOS 13.0, *) {
-            try SMAppService.mainApp.register()
+            // register() is not idempotent: calling it again while already
+            // registered stacks up duplicate Login Items entries. Skip if the
+            // service is already enabled.
+            if SMAppService.mainApp.status != .enabled {
+                try SMAppService.mainApp.register()
+            }
             UserDefaults.standard.set(true, forKey: userDefaultsKey)
         }
     }

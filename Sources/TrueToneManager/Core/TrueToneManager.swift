@@ -20,11 +20,18 @@ class TrueToneManager {
     }
     var currentTrueToneState: Bool = false {
         didSet {
+            if hasLoadedInitialState && oldValue != currentTrueToneState {
+                NotificationManager.shared.notifyTrueToneChanged(enabled: currentTrueToneState)
+            }
             DispatchQueue.main.async { [weak self] in
                 self?.onStateChanged?()
             }
         }
     }
+
+    /// Guards state-change notifications so the first read at launch (which sets
+    /// the state up from its `false` seed) doesn't fire a spurious notification.
+    private var hasLoadedInitialState = false
 
     /// Baseline True Tone state applied to any app without an explicit rule.
     /// Captured from the live system state on first launch (we don't assume a
@@ -74,6 +81,7 @@ class TrueToneManager {
                 os_log(.error, log: log, "Failed to get initial state: %{public}@", error.localizedDescription)
             }
         }
+        hasLoadedInitialState = true
 
         applicationMonitor.delegate = self
         applicationMonitor.start()
@@ -131,6 +139,7 @@ class TrueToneManager {
         } else {
             os_log(.error, log: log, "TrueTone controller not available - unsupported hardware")
         }
+        hasLoadedInitialState = true
 
         applicationMonitor.delegate = self
         applicationMonitor.start()

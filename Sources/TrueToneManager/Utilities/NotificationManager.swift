@@ -9,19 +9,49 @@ class NotificationManager {
     private var shownErrorTypes: Set<String> = []
     private let deduplicationQueue = DispatchQueue(label: "com.truetonemanager.notifications")
 
+    private static let stateChangeNotificationsKey = "StateChangeNotificationsEnabled"
+
+    /// Whether to post a notification each time True Tone turns on or off.
+    /// Off by default (UserDefaults.bool defaults to false).
+    var stateChangeNotificationsEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: Self.stateChangeNotificationsKey) }
+        set { UserDefaults.standard.set(newValue, forKey: Self.stateChangeNotificationsKey) }
+    }
+
     private init() {}
 
-    func requestAuthorization() {
-        guard Bundle.main.bundleIdentifier != nil else {
-            os_log(.info, log: log, "Skipping notification authorization - no bundle identifier")
-            return
-        }
-
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
-            if let error = error {
-                os_log(.error, log: self.log, "Notification authorization failed: %{public}@", error.localizedDescription)
+    /// Post a notification, requesting authorization lazily the first time one is
+    /// actually shown rather than up front at launch. If the user hasn't been
+    /// asked yet we prompt now and only deliver once granted; if they've already
+    /// granted we deliver straight away; if denied we stay silent.
+    private func post(_ content: UNMutableNotificationContent) {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { [weak self] settings in
+            switch settings.authorizationStatus {
+            case .notDetermined:
+                center.requestAuthorization(options: [.alert, .sound]) { granted, error in
+                    if let error = error {
+                        os_log(.error, log: self?.log ?? .default,
+                               "Notification authorization failed: %{public}@", error.localizedDescription)
+                    }
+                    guard granted else { return }
+                    self?.deliver(content, via: center)
+                }
+            case .authorized, .provisional, .ephemeral:
+                self?.deliver(content, via: center)
+            default:
+                break
             }
         }
+    }
+
+    private func deliver(_ content: UNMutableNotificationContent, via center: UNUserNotificationCenter) {
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+        center.add(request)
     }
 
     func showError(type: String, title: String, message: String, deduplicate: Bool = true) {
@@ -51,13 +81,7 @@ class NotificationManager {
         content.body = message
         content.sound = .default
 
-        let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
-            content: content,
-            trigger: nil
-        )
-
-        UNUserNotificationCenter.current().add(request)
+        post(content)
     }
 
     func showNotification(title: String, message: String, type: NotificationType) {
@@ -75,13 +99,18 @@ class NotificationManager {
             content.sound = .default
         }
 
-        let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
-            content: content,
-            trigger: nil
-        )
+        post(content)
+    }
 
-        UNUserNotificationCenter.current().add(request)
+    /// Post a notification that True Tone just turned on or off. Respects the
+    /// user's toggle; does nothing when state-change notifications are disabled.
+    func notifyTrueToneChanged(enabled: Bool) {
+        guard stateChangeNotificationsEnabled else { return }
+        showNotification(
+            title: "True Tone",
+            message: enabled ? "True Tone turned on" : "True Tone turned off",
+            type: .info
+        )
     }
 
     func resetDeduplication() {
