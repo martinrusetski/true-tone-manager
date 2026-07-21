@@ -73,7 +73,6 @@ struct GeneralSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .scrollDisabled(true)
         .onAppear {
             launchAtLogin = LaunchAtLoginManager.isEnabled()
             defaultTrueToneOn = TrueToneManager.shared.defaultTrueToneState
