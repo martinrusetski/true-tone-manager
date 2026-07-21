@@ -48,7 +48,15 @@ final class UpdaterManager: NSObject {
                    "Sparkle updater unavailable: %{public}@", error.localizedDescription)
         }
 
-        promptForAutomaticUpdatesIfNeeded()
+        if UserDefaults.standard.bool(forKey: hasPromptedKey) {
+            // Past first-launch onboarding: Sparkle's scheduler only checks
+            // about once a day, so kick off an immediate silent check on every
+            // launch too. It surfaces the update prompt only if there's a new
+            // version, and stays quiet otherwise.
+            checkForUpdatesInBackgroundIfEnabled()
+        } else {
+            promptForAutomaticUpdatesIfNeeded()
+        }
     }
 
     /// True when a feed and key are configured and the updater is running.
@@ -70,6 +78,13 @@ final class UpdaterManager: NSObject {
         guard started else { return }
         NSApp.activate(ignoringOtherApps: true)
         updater.checkForUpdates()
+    }
+
+    /// Silent, immediate update check honoring the user's auto-check setting.
+    /// Shows Sparkle's update UI only when a new version is available.
+    private func checkForUpdatesInBackgroundIfEnabled() {
+        guard started, updater.automaticallyChecksForUpdates else { return }
+        updater.checkForUpdatesInBackground()
     }
 
     private func promptForAutomaticUpdatesIfNeeded() {
