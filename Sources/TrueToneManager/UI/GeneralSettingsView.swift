@@ -3,6 +3,7 @@ import SwiftUI
 struct GeneralSettingsView: View {
     @State private var launchAtLogin = LaunchAtLoginManager.isEnabled()
     @State private var launchAtLoginError: String?
+    @State private var hideMenuBarIcon = MenuBarIconManager.isHidden
     @State private var defaultTrueToneOn = TrueToneManager.shared.defaultTrueToneState
     @State private var isTrueToneAvailable = TrueToneManager.shared.isTrueToneAvailable
     @State private var updatesAvailable = UpdaterManager.shared.isAvailable
@@ -23,6 +24,19 @@ struct GeneralSettingsView: View {
                         .font(.callout)
                         .foregroundColor(.red)
                 }
+            }
+
+            Section {
+                Toggle("Hide menu bar icon", isOn: $hideMenuBarIcon)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .onChange(of: hideMenuBarIcon) { newValue in
+                        MenuBarIconManager.isHidden = newValue
+                    }
+            } footer: {
+                Text("Launch TrueTone Manager to open Settings when the icon is hidden.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
             }
 
             Section {
@@ -75,6 +89,7 @@ struct GeneralSettingsView: View {
         .formStyle(.grouped)
         .onAppear {
             launchAtLogin = LaunchAtLoginManager.isEnabled()
+            hideMenuBarIcon = MenuBarIconManager.isHidden
             defaultTrueToneOn = TrueToneManager.shared.defaultTrueToneState
             isTrueToneAvailable = TrueToneManager.shared.isTrueToneAvailable
             updatesAvailable = UpdaterManager.shared.isAvailable

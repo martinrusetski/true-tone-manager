@@ -41,6 +41,12 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
             name: .preferencesDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleMenuBarIconVisibilityDidChange),
+            name: MenuBarIconManager.didChangeVisibility,
+            object: nil
+        )
 
         updateMenu()
         os_log(.info, log: log, "Menu bar interface ready")
@@ -48,6 +54,7 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
 
     func teardown() {
         NotificationCenter.default.removeObserver(self, name: .preferencesDidChange, object: nil)
+        NotificationCenter.default.removeObserver(self, name: MenuBarIconManager.didChangeVisibility, object: nil)
         if let statusItem = statusItem {
             NSStatusBar.system.removeStatusItem(statusItem)
         }
@@ -55,6 +62,14 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
 
     @objc private func handlePreferencesDidChange() {
         updateMenu()
+    }
+
+    @objc private func handleMenuBarIconVisibilityDidChange() {
+        updateVisibility()
+    }
+
+    private func updateVisibility() {
+        statusItem?.isVisible = !MenuBarIconManager.isHidden
     }
 
     private func updateIcon() {
@@ -91,6 +106,7 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
     }
 
     func updateMenu() {
+        updateVisibility()
         updateIcon()
         menu.removeAllItems()
 
@@ -265,6 +281,10 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
     }
 
     @objc private func showSettingsAction() {
+        showSettings()
+    }
+
+    func showSettings() {
         settingsWindowController.show()
     }
 

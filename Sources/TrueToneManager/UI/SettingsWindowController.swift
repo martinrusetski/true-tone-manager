@@ -30,10 +30,10 @@ class SettingsWindowController: NSWindowController {
         tabViewController.tabStyle = .toolbar
 
         // Both panes share one size so the window doesn't resize on tab switch.
-        // The height accommodates the taller grouped-Form rows and switches
-        // introduced in the macOS 26/27 UI; the General pane also scrolls as a
-        // safety net so its bottom controls can never be clipped.
-        let paneSize = NSSize(width: 480, height: 460)
+        // The height accommodates the grouped-Form rows and switches introduced
+        // in the macOS 26/27 UI; the General pane also scrolls as a safety net
+        // so its bottom controls can never be clipped.
+        let paneSize = NSSize(width: 480, height: 520)
 
         let generalController = NSHostingController(rootView: GeneralSettingsView())
         generalController.preferredContentSize = paneSize
@@ -62,7 +62,9 @@ class SettingsWindowController: NSWindowController {
             window?.center()
             hasShownOnce = true
         }
+        window?.deminiaturize(nil)
         showWindow(nil)
+        window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 }

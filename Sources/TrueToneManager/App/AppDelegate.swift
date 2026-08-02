@@ -37,7 +37,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 os_log(.info, log: self.log, "TrueTone Manager started")
             }
+
+            // Settings is the entry point when the menu bar icon is hidden.
+            DispatchQueue.main.async { [weak self] in
+                self?.menuBarInterface?.showSettings()
+            }
         }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // Finder, Launchpad, and the Dock use this callback when launching an
+        // instance that is already running.
+        menuBarInterface?.showSettings()
+        return true
     }
 
     @objc private func handleScreenParametersChanged() {

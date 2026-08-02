@@ -15,8 +15,8 @@ At the same time, outside of work, it can actually be quite pleasant. It reduces
 - **Per-app rules** — set each app to **Always On**, **Always Off**, or **Use Default**. The rule is applied automatically when that app comes to the foreground.
 - **Configurable default** — the baseline state for apps without a rule. Captured from your current system setting on first launch (no assumptions baked in) and changeable any time from the menu. Leaving an app that had a rule restores the default.
 - **Multi-display aware** — True Tone is a system-wide setting, but only some displays support it. The app detects whether a True Tone-capable display is active and shows **Unavailable** instead of failing — e.g. a MacBook in clamshell mode driving a third-party monitor.
-- **Settings window** — press ⌘, on the menu bar icon to manage everything in one place: every per-app rule in a single list with native switches, the default state, and launch at login. Rules can be added for apps that aren't currently running via the **+** button.
-- **Menu bar icon** — shows the current True Tone status at a glance.
+- **Settings window** — opens when the app launches and can also be opened with ⌘, on the menu bar icon. Manage everything in one place: every per-app rule in a single list with explicit rule selectors, the default state, launch at login, and menu bar visibility. Rules can be added for apps that aren't currently running via the **+** button.
+- **Menu bar icon** — shows the current True Tone status at a glance, and can be hidden from Settings.
 - **Persistent preferences** — per-app rules saved to disk and restored on relaunch.
 
 ## Requirements
@@ -48,12 +48,12 @@ Grab the latest `.dmg` from the [Releases](https://github.com/martinrusetski/tru
 
 ## Usage
 
-1. Launch the app — a ☀️ icon appears in your menu bar.
+1. Launch the app — Settings opens, and a ☀️ icon appears in your menu bar unless you hid it in Settings.
 2. Click the icon. The menu shows the current app and the current True Tone state.
 3. Under **TrueTone for (current app)**, choose **Always On**, **Always Off**, or **Use Default**.
 4. Set the fallback for every other app under **Default (apps without a rule)**.
 5. Switch apps — TrueTone Manager applies the matching rule automatically, and restores the default when you leave an app that had one.
-6. Open **Settings…** (⌘,) from the menu to review all rules at once, add rules for apps that aren't currently running, remove old ones, and enable launch at login.
+6. Open **Settings…** (⌘,) from the menu to review all rules at once, add rules for apps that aren't currently running, remove old ones, enable launch at login, or hide the menu bar icon. Launching the app opens Settings again.
 
 ## How It Works
 
