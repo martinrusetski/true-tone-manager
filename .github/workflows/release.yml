@@ -189,6 +189,9 @@ jobs:
           # Re-fetch the tag object so we get the real notes we wrote on the tag.
           git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}"
           NOTES=$(git tag -l --format='%(contents:body)' "$TAG")
+          # Normalize escaped newlines so release notes stay readable even if
+          # an annotated tag was created with literal "\\n" sequences.
+          NOTES=$(printf '%s' "$NOTES" | python3 -c 'import sys; print(sys.stdin.read().replace("\\n", "\n"), end="")')
           if [ -z "$NOTES" ]; then
             NOTES="See [README](https://github.com/${{ github.repository }}/blob/main/README.md) for installation and usage instructions."
           fi
