@@ -7,6 +7,14 @@
     <language>en</language>
     <!-- BEGIN ITEMS -->
     <item>
+      <title>0.5.0</title>
+      <pubDate>Sun, 02 Aug 2026 00:33:45 +0000</pubDate>
+      <sparkle:version>15</sparkle:version>
+      <sparkle:shortVersionString>0.5.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/martinrusetski/true-tone-manager/releases/download/v0.5.0/TrueToneManager-v0.5.0.dmg" sparkle:edSignature="HYzkwKxOdWMY/SBeTp6FSNYJCNhTn7gHLpmBEYOWEo4vjTBmBqbltera3wHduvEA3TU6XgxXwAuerENW948PCA==" length="2412674" type="application/octet-stream" />
+    </item>
+    <item>
       <title>0.4.2</title>
       <pubDate>Tue, 21 Jul 2026 14:38:52 +0000</pubDate>
       <sparkle:version>14</sparkle:version>
