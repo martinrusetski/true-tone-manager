@@ -48,7 +48,7 @@ Grab the latest `.dmg` from the [Releases](https://github.com/martinrusetski/tru
 
 ## Usage
 
-1. Launch the app — Settings opens, and a ☀️ icon appears in your menu bar unless you hid it in Settings.
+1. Launch the app normally — Settings opens, and a ☀️ icon appears in your menu bar unless you hid it in Settings. Launches at login stay silent.
 2. Click the icon. The menu shows the current app and the current True Tone state.
 3. Under **TrueTone for (current app)**, choose **Always On**, **Always Off**, or **Use Default**.
 4. Set the fallback for every other app under **Default (apps without a rule)**.

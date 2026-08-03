@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import os.log
 
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -7,6 +8,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         os_log(.info, log: log, "App launching")
+        let launchedAsLoginItem = Self.wasLaunchedAsLoginItem
 
         if #available(macOS 13.0, *), LaunchAtLoginManager.isDesiredEnabled() {
             try? LaunchAtLoginManager.enable()
@@ -38,11 +40,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 os_log(.info, log: self.log, "TrueTone Manager started")
             }
 
-            // Settings is the entry point when the menu bar icon is hidden.
-            DispatchQueue.main.async { [weak self] in
-                self?.menuBarInterface?.showSettings()
+            // Login-item launches should stay silent during system startup. A
+            // normal launch still opens Settings, including when the icon is
+            // hidden.
+            if !launchedAsLoginItem {
+                DispatchQueue.main.async { [weak self] in
+                    self?.menuBarInterface?.showSettings()
+                }
             }
         }
+    }
+
+    private static var wasLaunchedAsLoginItem: Bool {
+        let event = NSAppleEventManager.shared().currentAppleEvent
+        return event?.eventID == kAEOpenApplication &&
+            event?.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
