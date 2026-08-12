@@ -12,6 +12,12 @@ import Sparkle
 final class UpdaterManager: NSObject {
     static let shared = UpdaterManager()
 
+    enum StartupAction: Equatable {
+        case checkInBackground
+        case requestPermission
+        case remainSilent
+    }
+
     /// Posted after `automaticallyChecksForUpdates` changes so open Settings
     /// windows can refresh their toggle.
     static let didChangeSettings = Notification.Name("com.truetonemanager.updaterSettingsDidChange")
@@ -35,9 +41,10 @@ final class UpdaterManager: NSObject {
         )
     }
 
-    /// Starts the updater (if it can) and, on first launch, asks the user
-    /// whether to check for updates automatically.
-    func start() {
+    /// Starts the updater and chooses whether launch may show the first-time
+    /// permission prompt. Login-item launches pass `false` so startup remains
+    /// silent; the unanswered prompt is deferred to the next interactive launch.
+    func start(allowsPermissionPrompt: Bool = true) {
         do {
             try updater.start()
             started = true
@@ -48,15 +55,31 @@ final class UpdaterManager: NSObject {
                    "Sparkle updater unavailable: %{public}@", error.localizedDescription)
         }
 
-        if UserDefaults.standard.bool(forKey: hasPromptedKey) {
+        switch Self.startupAction(
+            hasPrompted: UserDefaults.standard.bool(forKey: hasPromptedKey),
+            allowsPermissionPrompt: allowsPermissionPrompt
+        ) {
+        case .checkInBackground:
             // Past first-launch onboarding: Sparkle's scheduler only checks
             // about once a day, so kick off an immediate silent check on every
             // launch too. It surfaces the update prompt only if there's a new
             // version, and stays quiet otherwise.
             checkForUpdatesInBackgroundIfEnabled()
-        } else {
+        case .requestPermission:
             promptForAutomaticUpdatesIfNeeded()
+        case .remainSilent:
+            break
         }
+    }
+
+    static func startupAction(
+        hasPrompted: Bool,
+        allowsPermissionPrompt: Bool
+    ) -> StartupAction {
+        if hasPrompted {
+            return .checkInBackground
+        }
+        return allowsPermissionPrompt ? .requestPermission : .remainSilent
     }
 
     /// True when a feed and key are configured and the updater is running.

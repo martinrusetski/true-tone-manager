@@ -35,7 +35,7 @@ class AppRulesViewModel: ObservableObject {
             }
     }
 
-    func setRule(bundleIdentifier: String, displayName: String, enabled: Bool) {
+    func setRule(bundleIdentifier: String, displayName: String, enabled: Bool?) {
         do {
             try TrueToneManager.shared.setPreference(
                 bundleIdentifier: bundleIdentifier,
@@ -62,7 +62,7 @@ class AppRulesViewModel: ObservableObject {
         }
     }
 
-    func addRuleFromOpenPanel() {
+    func addApplicationFromOpenPanel() {
         let panel = NSOpenPanel()
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.allowedContentTypes = [.application]
@@ -81,26 +81,12 @@ class AppRulesViewModel: ObservableObject {
             return
         }
 
-        let displayName = FileManager.default.displayName(atPath: url.path)
-        let alert = NSAlert()
-        alert.messageText = "Set True Tone Rule"
-        alert.informativeText = "Choose what True Tone should do while \(displayName) is active."
-        alert.addButton(withTitle: "Always On")
-        alert.addButton(withTitle: "Always Off")
-        alert.addButton(withTitle: "Cancel")
-
-        let response = alert.runModal()
-        let enabled: Bool
-        switch response {
-        case .alertFirstButtonReturn:
-            enabled = true
-        case .alertSecondButtonReturn:
-            enabled = false
-        default:
+        guard TrueToneManager.shared.preferenceStore.getPreference(for: bundleIdentifier) == nil else {
             return
         }
 
-        setRule(bundleIdentifier: bundleIdentifier, displayName: displayName, enabled: enabled)
+        let displayName = FileManager.default.displayName(atPath: url.path)
+        setRule(bundleIdentifier: bundleIdentifier, displayName: displayName, enabled: nil)
     }
 
     func icon(for bundleIdentifier: String) -> NSImage {
@@ -123,18 +109,12 @@ class AppRulesViewModel: ObservableObject {
 struct AppRulesSettingsView: View {
     @StateObject private var viewModel = AppRulesViewModel()
     @State private var selectedBundleIdentifier: String?
-    private let ruleColumnWidth: CGFloat = 120
+    private let ruleColumnWidth: CGFloat = 150
 
     var body: some View {
         VStack(spacing: 0) {
             header
-
-            if viewModel.preferences.isEmpty {
-                emptyState
-            } else {
-                ruleList
-            }
-
+            ruleTable
             buttonBar
         }
     }
@@ -143,6 +123,7 @@ struct AppRulesSettingsView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Per-app rules")
                 .font(.headline)
+                .accessibilityHeading(.h2)
 
             Text("These rules override the default while an app is active. Apps without a rule use the default configured in General.")
                 .font(.footnote)
@@ -151,62 +132,107 @@ struct AppRulesSettingsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
     }
 
     private var emptyState: some View {
-        VStack {
-            Spacer()
-            Text("No app-specific rules yet. Click + to add one,\nor use the menu bar icon while an app is active.")
-                .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
+        Text("No apps added yet. Click + to add one,\nor use the menu bar icon while an app is active.")
+            .multilineTextAlignment(.center)
+            .foregroundColor(.secondary)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .allowsHitTesting(false)
     }
 
-    private var ruleList: some View {
-        List(selection: $selectedBundleIdentifier) {
-            HStack {
-                Spacer()
-                Text("True Tone rule")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .frame(width: ruleColumnWidth, alignment: .trailing)
-                    .offset(x: -14)
-            }
-            .listRowInsets(EdgeInsets(top: 2, leading: 20, bottom: 1, trailing: 20))
-            .listRowSeparator(.hidden)
+    private var ruleTable: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Text("App")
 
-            ForEach(viewModel.preferences, id: \.bundleIdentifier) { preference in
-                AppRuleRow(
-                    preference: preference,
-                    viewModel: viewModel,
-                    ruleColumnWidth: ruleColumnWidth,
-                    onRuleRemoved: {
-                        if selectedBundleIdentifier == preference.bundleIdentifier {
-                            selectedBundleIdentifier = nil
+                Spacer()
+
+                Text("True Tone rule")
+                    .frame(width: ruleColumnWidth, alignment: .leading)
+            }
+            .font(.caption)
+            .fontWeight(.medium)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
+            .background(Color.primary.opacity(0.06))
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("App rules table columns: App and True Tone rule")
+
+            Divider()
+
+            if viewModel.preferences.isEmpty {
+                emptyState
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(viewModel.preferences.enumerated()), id: \.element.id) { index, preference in
+                            HStack(spacing: 8) {
+                                Button {
+                                    selectedBundleIdentifier = preference.id
+                                } label: {
+                                    AppIdentityCell(preference: preference, viewModel: viewModel)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .buttonStyle(.plain)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                                .foregroundColor(
+                                    selectedBundleIdentifier == preference.id ? .white : .primary
+                                )
+
+                                AppRulePicker(
+                                    preference: preference,
+                                    viewModel: viewModel
+                                )
+                                .frame(width: ruleColumnWidth, alignment: .leading)
+                            }
+                            .padding(.horizontal, 10)
+                            .frame(height: 28)
+                            .background(rowColor(index: index, preference: preference))
+                            .accessibilityElement(children: .contain)
                         }
                     }
-                )
-                    .tag(preference.bundleIdentifier)
+                    .frame(maxWidth: .infinity)
+                }
+                .scrollIndicators(.automatic)
             }
         }
-        .listStyle(.inset)
+        .frame(maxHeight: .infinity)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color(nsColor: .separatorColor), lineWidth: 0.5)
+        }
+        .padding(.horizontal, 12)
+    }
+
+    private func rowColor(index: Int, preference: AppPreference) -> Color {
+        if selectedBundleIdentifier == preference.id {
+            return .accentColor
+        }
+        return alternatingRowColor(index)
+    }
+
+    private func alternatingRowColor(_ index: Int) -> Color {
+        index.isMultiple(of: 2) ? .clear : Color.primary.opacity(0.06)
     }
 
     private var buttonBar: some View {
         HStack(spacing: 8) {
             Button {
-                viewModel.addRuleFromOpenPanel()
+                viewModel.addApplicationFromOpenPanel()
             } label: {
                 Image(systemName: "plus")
-                    .frame(width: 20, height: 20)
+                    .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
-            .help("Add a rule for an application")
+            .help("Add an application")
 
             Button {
                 if let selected = selectedBundleIdentifier {
@@ -216,7 +242,7 @@ struct AppRulesSettingsView: View {
                 }
             } label: {
                 Image(systemName: "minus")
-                    .frame(width: 20, height: 20)
+                    .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
@@ -225,7 +251,8 @@ struct AppRulesSettingsView: View {
 
             Spacer()
         }
-        .padding(6)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
     }
 }
 
@@ -248,14 +275,12 @@ private enum AppRuleSelection: String, CaseIterable, Identifiable {
     }
 }
 
-private struct AppRuleRow: View {
+private struct AppIdentityCell: View {
     let preference: AppPreference
     let viewModel: AppRulesViewModel
-    let ruleColumnWidth: CGFloat
-    let onRuleRemoved: () -> Void
 
     var body: some View {
-        HStack {
+        HStack(spacing: 8) {
             Image(nsImage: viewModel.icon(for: preference.bundleIdentifier))
                 .resizable()
                 .frame(width: 20, height: 20)
@@ -263,48 +288,65 @@ private struct AppRuleRow: View {
             Text(preference.displayName)
                 .lineLimit(1)
                 .truncationMode(.tail)
+        }
+    }
+}
 
-            Spacer()
+private struct AppRulePicker: View {
+    let preference: AppPreference
+    let viewModel: AppRulesViewModel
 
-            Picker("True Tone rule", selection: Binding(
-                get: {
-                    preference.trueToneEnabled ? AppRuleSelection.alwaysOn : AppRuleSelection.alwaysOff
-                },
-                set: { (selection: AppRuleSelection) in
-                    switch selection {
-                    case .useDefault:
-                        if viewModel.removeRule(bundleIdentifier: preference.bundleIdentifier) {
-                            onRuleRemoved()
-                        }
-                    case .alwaysOn where preference.trueToneEnabled:
-                        break
-                    case .alwaysOn:
-                        viewModel.setRule(
-                            bundleIdentifier: preference.bundleIdentifier,
-                            displayName: preference.displayName,
-                            enabled: true
-                        )
-                    case .alwaysOff where !preference.trueToneEnabled:
-                        break
-                    case .alwaysOff:
-                        viewModel.setRule(
-                            bundleIdentifier: preference.bundleIdentifier,
-                            displayName: preference.displayName,
-                            enabled: false
-                        )
-                    }
+    var body: some View {
+        Picker("True Tone rule", selection: selection) {
+            ForEach(AppRuleSelection.allCases) { selection in
+                Text(selection.title).tag(selection)
+            }
+        }
+        .pickerStyle(.menu)
+        .controlSize(.small)
+        .labelsHidden()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityLabel("True Tone rule for \(preference.displayName)")
+    }
+
+    private var selection: Binding<AppRuleSelection> {
+        Binding(
+            get: {
+                switch preference.trueToneEnabled {
+                case true:
+                    return .alwaysOn
+                case false:
+                    return .alwaysOff
+                case nil:
+                    return .useDefault
                 }
-            )) {
-                ForEach(AppRuleSelection.allCases) { selection in
-                    Text(selection.title).tag(selection)
+            },
+            set: { selection in
+                switch selection {
+                case .useDefault:
+                    viewModel.setRule(
+                        bundleIdentifier: preference.bundleIdentifier,
+                        displayName: preference.displayName,
+                        enabled: nil
+                    )
+                case .alwaysOn where preference.trueToneEnabled == true:
+                    break
+                case .alwaysOn:
+                    viewModel.setRule(
+                        bundleIdentifier: preference.bundleIdentifier,
+                        displayName: preference.displayName,
+                        enabled: true
+                    )
+                case .alwaysOff where preference.trueToneEnabled == false:
+                    break
+                case .alwaysOff:
+                    viewModel.setRule(
+                        bundleIdentifier: preference.bundleIdentifier,
+                        displayName: preference.displayName,
+                        enabled: false
+                    )
                 }
             }
-            .pickerStyle(.menu)
-            .controlSize(.small)
-            .labelsHidden()
-            .frame(width: ruleColumnWidth, alignment: .trailing)
-            .accessibilityLabel("True Tone rule for \(preference.displayName)")
-        }
-        .padding(.vertical, 2)
+        )
     }
 }

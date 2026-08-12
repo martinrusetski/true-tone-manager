@@ -221,7 +221,7 @@ class MenuBarInterface: NSObject, NSMenuDelegate {
             keyEquivalent: ""
         )
         useDefault.target = self
-        useDefault.state = (pref == nil) ? .on : .off
+        useDefault.state = (pref?.trueToneEnabled == nil) ? .on : .off
         submenu.addItem(useDefault)
 
         let alwaysOn = NSMenuItem(title: "Always On", action: #selector(setRuleOnAction), keyEquivalent: "")

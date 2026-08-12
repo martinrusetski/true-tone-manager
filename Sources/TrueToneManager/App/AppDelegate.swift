@@ -23,8 +23,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.menuBarInterface?.updateMenu()
         }
 
-        // Starts Sparkle and, on first launch, asks about automatic updates.
-        UpdaterManager.shared.start()
+        // Login-item launches must not display any UI. Defer the first-time
+        // automatic-update prompt until the next interactive launch.
+        UpdaterManager.shared.start(allowsPermissionPrompt: !launchedAsLoginItem)
 
         NotificationCenter.default.addObserver(
             self,
@@ -33,7 +34,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
-        manager.startAsync { error in
+        manager.startAsync { [weak self] error in
+            guard let self else { return }
+
             if let error = error {
                 os_log(.error, log: self.log, "Failed to start: %{public}@", error.localizedDescription)
             } else {
@@ -44,8 +47,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // normal launch still opens Settings, including when the icon is
             // hidden.
             if !launchedAsLoginItem {
-                DispatchQueue.main.async { [weak self] in
-                    self?.menuBarInterface?.showSettings()
+                DispatchQueue.main.async {
+                    self.menuBarInterface.showSettings()
                 }
             }
         }

@@ -159,11 +159,8 @@ class TrueToneManager {
         os_log(.info, log: log, "Application changed: %{public}@", bundleIdentifier)
 
         let targetState: Bool
-        if let preference = preferenceStore.getPreference(for: bundleIdentifier) {
-            targetState = preference.trueToneEnabled
-        } else {
-            targetState = defaultTrueToneState
-        }
+        targetState = preferenceStore.getPreference(for: bundleIdentifier)?.trueToneEnabled
+            ?? defaultTrueToneState
 
         guard isTrueToneAvailable else {
             os_log(.info, log: log, "TrueTone unavailable, skipping change for %{public}@", bundleIdentifier)
@@ -250,7 +247,7 @@ class TrueToneManager {
 
     /// Set (or replace) the rule for an arbitrary bundle identifier, e.g. from the
     /// Settings window's Apps pane. If it's the frontmost app, applies immediately.
-    func setPreference(bundleIdentifier: String, displayName: String, enabled: Bool) throws {
+    func setPreference(bundleIdentifier: String, displayName: String, enabled: Bool?) throws {
         let preference = AppPreference(
             bundleIdentifier: bundleIdentifier,
             trueToneEnabled: enabled,
@@ -260,12 +257,13 @@ class TrueToneManager {
         try preferenceStore.setPreference(preference)
 
         if bundleIdentifier == currentApplication?.bundleIdentifier {
-            applyIfAvailable(enabled, for: bundleIdentifier)
+            applyIfAvailable(enabled ?? defaultTrueToneState, for: bundleIdentifier)
         }
 
-        os_log(.info, log: log, "Set preference for %{public}@: TrueTone %{public}@",
+        let ruleDescription = enabled.map { $0 ? "On" : "Off" } ?? "Use Default"
+        os_log(.info, log: log, "Set preference for %{public}@: %{public}@",
                bundleIdentifier,
-               enabled ? "On" : "Off")
+               ruleDescription)
     }
 
     /// Remove the rule for an arbitrary bundle identifier, e.g. from the Settings

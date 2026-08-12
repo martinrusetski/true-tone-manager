@@ -11,82 +11,74 @@ struct GeneralSettingsView: View {
     @State private var notifyOnChange = NotificationManager.shared.stateChangeNotificationsEnabled
 
     var body: some View {
-        Form {
-            Section {
-                Toggle("Launch at login", isOn: $launchAtLogin)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .onChange(of: launchAtLogin) { newValue in
-                        setLaunchAtLogin(newValue)
+        ScrollView {
+            VStack(spacing: 16) {
+                SettingsGroup {
+                    SettingsToggleRow("Launch at login", isOn: $launchAtLogin) {
+                        setLaunchAtLogin(launchAtLogin)
                     }
-                if let message = launchAtLoginError {
-                    Text(message)
-                        .font(.callout)
-                        .foregroundColor(.red)
+                    if let message = launchAtLoginError {
+                        Text(message)
+                            .font(.footnote)
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    Divider()
+
+                    SettingsToggleRow(
+                        "Hide menu bar icon",
+                        detail: "Launch TrueTone Manager to open Settings when the icon is hidden.",
+                        isOn: $hideMenuBarIcon
+                    ) {
+                        MenuBarIconManager.isHidden = hideMenuBarIcon
+                    }
+
+                    Divider()
+
+                    SettingsToggleRow(
+                        "True Tone by default",
+                        detail: "Applied to apps without a specific rule.",
+                        isOn: $defaultTrueToneOn
+                    ) {
+                        TrueToneManager.shared.setDefaultTrueTone(enabled: defaultTrueToneOn)
+                    }
+
+                    Divider()
+
+                    SettingsToggleRow(
+                        "Notify when True Tone changes",
+                        detail: "Shows a notification each time True Tone turns on or off.",
+                        isOn: $notifyOnChange
+                    ) {
+                        NotificationManager.shared.stateChangeNotificationsEnabled = notifyOnChange
+                    }
                 }
-            }
 
-            Section {
-                Toggle("Hide menu bar icon", isOn: $hideMenuBarIcon)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .onChange(of: hideMenuBarIcon) { newValue in
-                        MenuBarIconManager.isHidden = newValue
+                SettingsGroup {
+                    LabeledContent("True Tone") {
+                        Text(isTrueToneAvailable ? "Available" : "No capable display")
+                            .foregroundColor(.secondary)
                     }
-            } footer: {
-                Text("Launch TrueTone Manager to open Settings when the icon is hidden.")
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-            }
-
-            Section {
-                Toggle("True Tone by default", isOn: $defaultTrueToneOn)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .onChange(of: defaultTrueToneOn) { newValue in
-                        TrueToneManager.shared.setDefaultTrueTone(enabled: newValue)
-                    }
-            } footer: {
-                Text("Applied to apps without a specific rule.")
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-            }
-
-            Section {
-                Toggle("Notify when True Tone changes", isOn: $notifyOnChange)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .onChange(of: notifyOnChange) { newValue in
-                        NotificationManager.shared.stateChangeNotificationsEnabled = newValue
-                    }
-            } footer: {
-                Text("Shows a notification each time True Tone turns on or off.")
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-            }
-
-            Section {
-                LabeledContent("True Tone") {
-                    Text(isTrueToneAvailable ? "Available" : "No capable display")
-                        .foregroundColor(.secondary)
                 }
-            }
 
-            if updatesAvailable {
-                Section {
-                    Toggle("Automatically check for updates", isOn: $autoCheckUpdates)
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .onChange(of: autoCheckUpdates) { newValue in
-                            UpdaterManager.shared.automaticallyChecksForUpdates = newValue
+                if updatesAvailable {
+                    SettingsGroup {
+                        SettingsToggleRow("Automatically check for updates", isOn: $autoCheckUpdates) {
+                            UpdaterManager.shared.automaticallyChecksForUpdates = autoCheckUpdates
                         }
-                    Button("Check for Updates…") {
-                        UpdaterManager.shared.checkForUpdates()
+
+                        Divider()
+
+                        Button("Check for Updates…") {
+                            UpdaterManager.shared.checkForUpdates()
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }
+            .padding(20)
         }
-        .formStyle(.grouped)
         .onAppear {
             launchAtLogin = LaunchAtLoginManager.isEnabled()
             hideMenuBarIcon = MenuBarIconManager.isHidden
@@ -117,5 +109,59 @@ struct GeneralSettingsView: View {
             launchAtLogin = LaunchAtLoginManager.isEnabled()
             launchAtLoginError = error.localizedDescription
         }
+    }
+}
+
+private struct SettingsGroup<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            content
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+private struct SettingsToggleRow: View {
+    let title: String
+    let detail: String?
+    @Binding var isOn: Bool
+    let onChange: () -> Void
+
+    init(
+        _ title: String,
+        detail: String? = nil,
+        isOn: Binding<Bool>,
+        onChange: @escaping () -> Void
+    ) {
+        self.title = title
+        self.detail = detail
+        self._isOn = isOn
+        self.onChange = onChange
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                if let detail {
+                    Text(detail)
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Toggle(title, isOn: $isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+        }
+        .onChange(of: isOn) { _ in onChange() }
     }
 }
