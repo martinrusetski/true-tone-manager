@@ -31,9 +31,9 @@ At the same time, outside of work, it can actually be quite pleasant. It reduces
 Installs directly to `/Applications` and clears quarantine automatically:
 
 ```bash
-brew tap mrtnby/tap https://github.com/martinrusetski/homebrew-tap
-brew trust mrtnby/tap
-brew install --cask mrtnby/tap/true-tone-manager
+brew tap martinrusetski/tap
+brew trust martinrusetski/tap
+brew install --cask martinrusetski/tap/true-tone-manager
 ```
 
 ### DMG (pre-built)
