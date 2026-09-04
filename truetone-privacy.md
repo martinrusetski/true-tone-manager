@@ -58,4 +58,4 @@ If this policy changes, the "Last updated" date above will change and the curren
 - Developer: Martin Rusetski
 - Website: https://martinrusetski.com
 - Project: https://github.com/martinrusetski/true-tone-manager
-- Email: _add your preferred contact email here_
+- Email: martin\@martinrusetski.com
